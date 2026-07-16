@@ -1,25 +1,65 @@
-# WorldScape Policy 2.0 Project Page
+# WorldScape Policy 2.0: Empowering Steerable World Action Modeling with Reasoning-Augmented Memory
 
-Static project page for:
+WorldScape Policy 2.0 is a controllable World Action Model (WAM) with reasoning-augmented long short-term memory for long-horizon robotic manipulation, fine-grained instruction following, visual-context reasoning, and in-context skill transfer.
 
-**WorldScape Policy 2.0: Empowering Steerable World Action Modeling with Reasoning-Augmented Memory**
+[![Project Page](https://img.shields.io/badge/Project-Page-6F35C7?logo=googlechrome&logoColor=white)](https://manifoldai-research.github.io/WorldScape-Policy/)
+[![Paper](https://img.shields.io/badge/Paper-PDF-b31b1b.svg?logo=adobeacrobatreader)](assets/docs/worldscape-policy-2.pdf)
+[![Code](https://img.shields.io/badge/Code-Coming%20Soon-8A8F98)](#code)
 
-## Local preview
+## News
 
-Open `index.html` directly in a browser, or serve the folder with any static server.
+- **Code is coming soon.** We are preparing the training, inference, and evaluation code for release.
+- Project page: https://manifoldai-research.github.io/WorldScape-Policy/
+- Paper: [`assets/docs/worldscape-policy-2.pdf`](assets/docs/worldscape-policy-2.pdf)
 
-## GitHub Pages
+## Overview
 
-1. Push this folder to a GitHub repository.
-2. In repository settings, enable GitHub Pages.
-3. Choose the branch and root folder as the Pages source.
-4. Replace the placeholder links in `index.html` once arXiv, GitHub, and model URLs are public.
+World Action Models jointly model future visual state transitions and robot actions, providing a natural interface for robot planning and controllable execution. However, existing WAMs are often limited by short temporal context, coarse episode-level language supervision, and text-only conditioning.
 
-## Structure
+WorldScape Policy 2.0 addresses these limitations with a reasoning-augmented long short-term memory design:
 
-- `index.html`: single-page project site.
-- `styles.css`: responsive visual design.
-- `script.js`: mobile navigation and BibTeX copy behavior.
-- `assets/figures`: logo and paper figures.
-- `assets/videos`: demo videos.
-- `assets/docs`: project paper PDF.
+- **Short-term visual memory** supplies recent observations as causal DiT prefill to preserve local interaction dynamics.
+- **Long-term event memory** organizes historical VLM outputs into global-history, local-active, and event-boundary representations for progress-aware retrieval.
+- **Latent subgoal reasoning** uses retrieved history to augment perception and autoregressively generated planning tokens.
+- **Event-grounded pretraining** builds fine-grained multimodal controllability from text prompts, goal images, video demonstrations, and action trajectories.
+
+## Key Features
+
+- Long-horizon autonomous planning from high-level task instructions.
+- Fine-grained instruction following from event-level subtask captions.
+- Memory-dependent visual reasoning for tasks such as shell-game state tracking.
+- In-context skill transfer from goal images and video-context demonstrations.
+- Unified video-action modeling with ManipEvent-5M pretraining.
+
+## Assets
+
+This repository currently contains release assets:
+
+```text
+assets/
+  docs/      # Paper PDF
+  figures/   # Project and paper figures
+  videos/    # Demo videos
+```
+
+## Code
+
+Code is coming soon.
+
+We plan to release implementation details for:
+
+- data preprocessing and ManipEvent-5M style event annotations;
+- model training and staged memory tuning;
+- inference for autonomous and interactive control modes;
+- simulation and real-world evaluation scripts.
+
+## Citation
+
+```bibtex
+@article{worldscape_policy_2026,
+  title={WorldScape Policy 2.0: Empowering Steerable World Action Modeling with Reasoning-Augmented Memory},
+  author={Manifold AI - WorldScape Team},
+  year={2026},
+  url={https://manifoldai-research.github.io/WorldScape-Policy/}
+}
+```
