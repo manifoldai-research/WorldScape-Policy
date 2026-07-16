@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WorldScape Policy 2.0</title>
+    <meta
+      name="description"
+      content="WorldScape Policy 2.0: Empowering Steerable World Action Modeling with Reasoning-Augmented Memory."
+    />
+    <meta property="og:title" content="WorldScape Policy 2.0" />
+    <meta
+      property="og:description"
+      content="A reasoning-augmented long short-term memory architecture for controllable World Action Models."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="assets/figures/logo.jpg" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="#top" aria-label="WorldScape Policy 2.0 home">
+          <img src="assets/figures/logo.jpg" alt="" />
+          <span>WorldScape Policy 2.0</span>
+        </a>
+        <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+          <span></span>
+          <span></span>
+        </button>
+        <nav class="nav-links" aria-label="Section navigation">
+          <a href="#abstract">Abstract</a>
+          <a href="#contributions">Contributions</a>
+          <a href="#method">Overview</a>
+          <a href="#method-details">Method</a>
+          <a href="#showcase">Showcase</a>
+          <a href="#results">Quantitative</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero section">
+        <div class="hero-copy">
+          <h1>WorldScape <span>Policy 2.0</span></h1>
+          <p class="subtitle">
+            Empowering Steerable World Action Modeling with Reasoning-Augmented Memory
+          </p>
+          <p class="hero-team"><span class="status-dot"></span> Manifold AI · WorldScape Team</p>
+          <div class="hero-actions" aria-label="Project links">
+            <a class="button primary" href="assets/docs/worldscape-policy-2.pdf">Paper</a>
+            <a class="button" href="#" aria-disabled="true">arXiv Coming Soon</a>
+            <a class="button" href="#" aria-disabled="true">GitHub Coming Soon</a>
+            <a class="button" href="#" aria-disabled="true">Model Coming Soon</a>
+          </div>
+        </div>
+      </section>
+
+      <section id="abstract" class="section narrow">
+        <div class="section-heading">
+          <p class="eyebrow">Abstract</p>
+        </div>
+        <p class="lead">
+          World Action Models (WAMs) offer a promising paradigm for robotic manipulation by
+          jointly modeling visual state transitions and robot actions. However, existing WAMs
+          are constrained by limited temporal context, coarse episode-level language supervision,
+          and predominantly text-only conditioning, which hinder task-progress tracking and
+          fine-grained language-video-action grounding while limiting visual-context reasoning
+          and cross-embodiment transfer.
+        </p>
+        <p>
+          In this paper, we introduce WorldScape Policy 2.0, a controllable WAM with
+          reasoning-augmented long short-term memory. Its causal short-term visual memory
+          supplies recent observations as DiT prefill to preserve local interaction dynamics,
+          while its long short-term event memory organizes historical VLM outputs into
+          global-history, local-active, and event-boundary representations for progress-aware
+          retrieval. The retrieved history augments perception and autoregressively generated
+          planning tokens, yielding an implicit subgoal condition for autonomous planning;
+          semantic forcing further transfers event-level instruction semantics into this latent
+          planning pathway.
+        </p>
+        <p>
+          To establish fine-grained multimodal controllability, we construct ManipEvent-5M, an
+          event-grounded embodied pretraining dataset containing nearly 5 million event segments
+          with aligned action trajectories, episode-level task instructions, segment-level
+          subtask captions, goal images, and video demonstrations. These designs provide a
+          unified interface for autonomous planning from high-level instructions and controllable
+          execution from fine-grained text, goal-image, or video-context prompts. Experiments in
+          both simulation and real-world platforms demonstrate superior capabilities in
+          long-horizon autonomous planning, fine-grained instruction following and in-context
+          adaptation.
+        </p>
+      </section>
+
+      <section class="section video-feature" aria-label="WorldScape Policy teaser video">
+        <div class="hero-media">
+          <img src="assets/videos/demo.gif" alt="WorldScape Policy 2.0 robot manipulation teaser" />
+          <div class="media-label">WORLD · ACTION · MEMORY</div>
+          <div class="media-caption">
+            <span>Long-horizon memory</span>
+            <span>Multimodal control</span>
+            <span>World-action prediction</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="contributions" class="section contributions-section">
+        <div class="section-heading">
+          <p class="eyebrow">Contributions</p>
+        </div>
+        <p class="contribution-intro">
+          A controllable World Action Model that combines <mark>short-term visual dynamics</mark>,
+          <mark>long-term event memory</mark>, <mark>latent subgoal reasoning</mark>, and
+          <mark>event-grounded pretraining</mark> for long-horizon robotic manipulation.
+        </p>
+        <div class="contributions">
+          <article>
+          <span>01</span>
+          <h3>Long Short-Term Memory</h3>
+          <p>
+            Progress-aware event memory tracks global history, the active local event, and
+            semantic boundaries, while causal visual memory preserves recent interaction dynamics.
+          </p>
+          </article>
+          <article>
+          <span>02</span>
+          <h3>Implicit Subgoal Reasoning</h3>
+          <p>
+            Retrieved history augments autoregressive planning tokens. Semantic forcing transfers
+            event-level instruction meaning into the latent autonomous-planning pathway.
+          </p>
+          </article>
+          <article>
+          <span>03</span>
+          <h3>Native Multimodal Control</h3>
+          <p>
+            Fine-grained text, first- or third-view goal images, and video demonstrations steer
+            one unified causal world-action interface across embodiments.
+          </p>
+          </article>
+          <article>
+          <span>04</span>
+          <h3>ManipEvent-5M Dataset</h3>
+          <p>
+            Nearly five million event segments align robot actions, hierarchical instructions,
+            goal images, demonstrations, and future visual transitions for scalable pretraining.
+          </p>
+          </article>
+        </div>
+        <div class="marquee keyword-marquee" aria-label="WorldScape Policy key ideas">
+          <div class="marquee-track">
+            <span>Reasoning-Augmented Memory</span><i>✦</i><span>ManipEvent-5M</span><i>✦</i>
+            <span>Event-Grounded Pretraining</span><i>✦</i><span>World Action Model</span><i>✦</i>
+            <span>Semantic Forcing</span><i>✦</i><span>In-Context Adaptation</span><i>✦</i>
+            <span>Event-Grounded Modeling</span><i>✦</i>
+            <span>Reasoning-Augmented Memory</span><i>✦</i><span>ManipEvent-5M</span><i>✦</i>
+            <span>Event-Grounded Pretraining</span><i>✦</i><span>World Action Model</span><i>✦</i>
+            <span>Semantic Forcing</span><i>✦</i><span>In-Context Adaptation</span><i>✦</i>
+            <span>Event-Grounded Modeling</span><i>✦</i>
+          </div>
+        </div>
+      </section>
+
+      <section id="method" class="section overview-section">
+        <div class="section-heading">
+          <p class="eyebrow">Overview</p>
+        </div>
+        <figure class="figure-panel">
+          <img src="assets/figures/framework.png" alt="WorldScape Policy 2.0 framework diagram" />
+          <figcaption>
+            <strong>Figure 1: WorldScape Policy 2.0 Framework Overview.</strong> Built on
+            ManipEvent-5M, the model encodes text, goal-image, and video prompts into a unified
+            causal video-action WAM with long short-term memory for steerable policies.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section id="method-details" class="section method-section">
+        <div class="section-heading">
+          <p class="eyebrow">Method</p>
+        </div>
+        <div class="story-text">
+          <p>
+            WorldScape Policy 2.0 separates temporal context into two complementary streams:
+            event-level reasoning memory for task progress and frame-level visual memory for
+            local interaction dynamics. Retrieved history augments VLM planning latents, while
+            causal DiT prefill preserves recent observations and persistent visual prompts.
+          </p>
+          <p>
+            A three-stage curriculum first learns event-grounded multimodal control, then
+            introduces memory mid-training with semantic forcing, and finally adapts the shared
+            world-action model to downstream autonomous planning, instruction following, and
+            visual-prompted interaction.
+          </p>
+        </div>
+        <div class="method-grid">
+          <figure class="figure-card">
+            <img src="assets/figures/overview.png" alt="Comparison of different WAM paradigms" />
+            <figcaption>
+              <strong>Figure 2: WAM Paradigm Comparison.</strong> WorldScape Policy 2.0 moves
+              from static or sliding-window context to reasoning-augmented multimodal memory.
+            </figcaption>
+          </figure>
+          <figure class="figure-card">
+            <img src="assets/figures/lstm.png" alt="Reasoning augmented long short-term memory diagram" />
+            <figcaption>
+              <strong>Figure 3: Reasoning-Augmented Memory.</strong> Global-history, local-active,
+              and event-boundary latents are retrieved and gated into current planning tokens.
+            </figcaption>
+          </figure>
+        </div>
+        <div class="subsection-heading">
+          <p class="eyebrow">Staged Training</p>
+        </div>
+        <div class="training-flow" aria-label="Three-stage training curriculum">
+          <article><b>Stage 01</b><h3>Event-Grounded Pretraining</h3><p>Learn fine-grained language-video-action grounding from ManipEvent-5M while establishing causal short-term visual memory and multimodal prompt control.</p></article>
+          <span class="flow-arrow">→</span>
+          <article><b>Stage 02</b><h3>Memory Mid-Training</h3><p>Introduce VLM latent planning, global-history retrieval, local-active memory, event-boundary anchors, and semantic forcing for progress-aware autonomous planning.</p></article>
+          <span class="flow-arrow">→</span>
+          <article><b>Stage 03</b><h3>Interactive Post-Training</h3><p>Adapt the shared world-action model to downstream robot embodiments, instruction following, visual prompting, and real-world interactive manipulation.</p></article>
+        </div>
+      </section>
+
+      <section id="dataset" class="section split">
+        <div>
+          <p class="eyebrow">Dataset</p>
+          <h2>ManipEvent-5M</h2>
+          <p>
+            ManipEvent-5M converts heterogeneous manipulation sources into event-level
+            samples. Each trajectory is segmented into ordered subgoals and annotated with
+            action trajectories, global instructions, fine-grained captions, goal images, and
+            video prompts.
+          </p>
+          <ul class="feature-list">
+            <li>Ego human videos, robot-free UMI data, simulated and real-robot data.</li>
+            <li>Event-level captions for atomic language-video-action grounding.</li>
+            <li>Goal-image and video-demonstration prompts for visual controllability.</li>
+          </ul>
+          <div class="stat-row">
+            <div><strong>4.89M</strong><span>event segments</span></div>
+            <div><strong>512M</strong><span>video frames</span></div>
+            <div><strong>744K</strong><span>episodes</span></div>
+          </div>
+        </div>
+        <figure class="figure-card flush">
+          <img src="assets/figures/pipeline.png" alt="ManipEvent-5M construction pipeline" />
+          <figcaption>
+            <strong>Figure 4: ManipEvent-5M Construction Pipeline.</strong> Heterogeneous
+            manipulation sources are segmented, captioned, aligned with action labels, and
+            converted into event-grounded multimodal prompts.
+          </figcaption>
+        </figure>
+      </section>
+      <section class="section dataset-visuals">
+        <figure class="figure-card">
+          <img src="assets/figures/distribution2.png" alt="ManipEvent-5M distribution statistics" />
+          <figcaption>
+            <strong>Figure 5: ManipEvent-5M Statistics.</strong> Dataset distributions across
+            episode length, subtask count, atomic actions, and segment duration.
+          </figcaption>
+        </figure>
+        <figure class="figure-card">
+          <img src="assets/figures/exmp2.png" alt="Coffee making multimodal prompt example" />
+          <figcaption>
+            <strong>Figure 6: Multimodal Prompt Example.</strong> A long-horizon coffee task
+            represented with global instruction, goal image, demonstration video, and event captions.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section id="showcase" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Capability Demonstration</p>
+        </div>
+        <div class="showcase-scroll" aria-label="Scrollable showcase videos">
+          <article class="showcase-item">
+            <video controls autoplay muted loop playsinline preload="metadata" poster="assets/figures/realworld2.png">
+              <source src="assets/videos/demo-memory.mp4" type="video/mp4" />
+            </video>
+            <div>
+              <h3>Long-Horizon Robotic Manipulation</h3>
+              <p>Progress-aware reasoning helps avoid repeated actions in multi-stage tasks.</p>
+            </div>
+          </article>
+          <article class="showcase-item">
+            <video controls autoplay muted loop playsinline preload="metadata" poster="assets/figures/realworld2.png">
+              <source src="assets/videos/demo-prompt.mp4" type="video/mp4" />
+            </video>
+            <div>
+              <h3>Memory-Dependent Visual Reasoning</h3>
+              <p>Shell-game tasks require the policy to retrieve visual history and infer the hidden state before acting.</p>
+            </div>
+          </article>
+          <article class="showcase-item">
+            <video controls autoplay muted loop playsinline preload="metadata" poster="assets/figures/exmp2.png">
+              <source src="assets/videos/demo-prompt.mp4" type="video/mp4" />
+            </video>
+            <div>
+              <h3>Cross-Embodiment Skill Transfer</h3>
+              <p>Video-context demonstrations guide action transfer across human and robot embodiments.</p>
+            </div>
+          </article>
+          <article class="showcase-item">
+            <video controls autoplay muted loop playsinline preload="metadata" poster="assets/figures/exmp1.png">
+              <source src="assets/videos/demo-memory.mp4" type="video/mp4" />
+            </video>
+            <div>
+              <h3>Fine-Grained Instruction Following</h3>
+              <p>Fine-grained text prompts steer atomic manipulation behavior with event-level control.</p>
+            </div>
+          </article>
+        </div>
+        <div class="capability-strip">
+          <span>Long-Horizon Autonomous Planning</span>
+          <span>In-Context Reasoning</span>
+          <span>In-Context Skill Transfer</span>
+          <span>Fine-Grained Instruction Following</span>
+        </div>
+      </section>
+
+      <section id="results" class="section results">
+        <div class="section-heading">
+          <p class="eyebrow">Evaluation</p>
+        </div>
+        <div class="tables-grid">
+          <article class="table-card">
+            <div class="table-head"><span>RoboTwin 2.0 Simulation Benchmark</span></div>
+            <div class="table-scroll">
+              <table>
+                <thead><tr><th>Method</th><th>Clean</th><th>Random</th><th>Average</th></tr></thead>
+                <tbody>
+                  <tr><td>&pi;<sub>0.5</sub></td><td>—</td><td>—</td><td>—</td></tr>
+                  <tr><td>Fast-WAM</td><td>—</td><td>—</td><td>—</td></tr>
+                  <tr><td>Motus</td><td>—</td><td>—</td><td>—</td></tr>
+                  <tr><td>LingBot-VA</td><td>—</td><td>—</td><td>—</td></tr>
+                  <tr class="ours"><td>WorldScape Policy 2.0</td><td>—</td><td>—</td><td>—</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+          <article class="table-card">
+            <div class="table-head"><span>Real-World Manipulation Benchmark</span></div>
+            <div class="table-scroll">
+              <table>
+                <thead><tr><th>Capability</th><th>Task</th><th>&pi;<sub>0.5</sub></th><th>DreamZero</th><th>Ours</th></tr></thead>
+                <tbody>
+                  <tr><td rowspan="2">Autonomous Planning</td><td>Folding Clothes</td><td>—</td><td>—</td><td>—</td></tr>
+                  <tr><td>Folding Box</td><td>—</td><td>—</td><td>—</td></tr>
+                  <tr><td>Memory Reasoning</td><td>Shell Game</td><td>—</td><td>—</td><td>—</td></tr>
+                  <tr><td>Skill Transfer</td><td>Stacking Blocks</td><td>—</td><td>—</td><td>—</td></tr>
+                  <tr><td>Instruction Following</td><td>Clean Table</td><td>—</td><td>—</td><td>—</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+        <div class="real-demo-grid">
+          <article class="video-card">
+            <video controls muted loop playsinline preload="metadata" poster="assets/figures/realworld2.png">
+              <source src="assets/videos/demo-memory.mp4" type="video/mp4" />
+            </video>
+            <div>
+              <h3>Autonomous Inference Mode</h3>
+              <p>Autonomous rollouts use memory to infer active subgoals from global instructions.</p>
+            </div>
+          </article>
+          <article class="video-card">
+            <video controls muted loop playsinline preload="metadata" poster="assets/figures/realworld2.png">
+              <source src="assets/videos/demo-prompt.mp4" type="video/mp4" />
+            </video>
+            <div>
+              <h3>Interactive Inference Mode</h3>
+              <p>Goal images and demonstration videos provide persistent context for skill transfer.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="citation" class="section citation">
+        <div class="section-heading">
+          <p class="eyebrow">Citation</p>
+        </div>
+        <div class="code-wrap">
+          <button class="copy-button" type="button" data-copy-target="bibtex">Copy</button>
+          <pre id="bibtex"><code>@article{worldscape_policy_2026,
+  title={WorldScape Policy 2.0: Empowering Steerable World Action Modeling with Reasoning-Augmented Memory},
+  author={Manifold AI - WorldScape Team},
+  year={2026},
+  url={https://manifoldai-research.github.io/WorldScape-Policy/}
+}</code></pre>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>WorldScape Policy 2.0</span>
+      <span>July 20, 2026</span>
+      <span>Contact: hanson@manifoldai.cn</span>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
