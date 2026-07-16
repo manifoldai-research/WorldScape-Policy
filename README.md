@@ -3,14 +3,12 @@
 WorldScape Policy 2.0 is a controllable World Action Model (WAM) with reasoning-augmented long short-term memory for long-horizon robotic manipulation, fine-grained instruction following, visual-context reasoning, and in-context skill transfer.
 
 [![Project Page](https://img.shields.io/badge/Project-Page-6F35C7?logo=googlechrome&logoColor=white)](https://manifoldai-research.github.io/WorldScape-Policy/)
-[![Paper](https://img.shields.io/badge/Paper-PDF-b31b1b.svg?logo=adobeacrobatreader)](assets/docs/worldscape-policy-2.pdf)
-[![Code](https://img.shields.io/badge/Code-Coming%20Soon-8A8F98)](#code)
+[![Paper](https://img.shields.io/badge/Paper-PDF-b31b1b.svg?logo=adobeacrobatreader)](https://manifoldai-research.github.io/WorldScape-Policy/assets/docs/worldscape-policy-2.pdf)
 
 ## News
 
 - **Code is coming soon.** We are preparing the training, inference, and evaluation code for release.
 - Project page: https://manifoldai-research.github.io/WorldScape-Policy/
-- Paper: [`assets/docs/worldscape-policy-2.pdf`](assets/docs/worldscape-policy-2.pdf)
 
 ## Overview
 
@@ -30,28 +28,6 @@ WorldScape Policy 2.0 addresses these limitations with a reasoning-augmented lon
 - Memory-dependent visual reasoning for tasks such as shell-game state tracking.
 - In-context skill transfer from goal images and video-context demonstrations.
 - Unified video-action modeling with ManipEvent-5M pretraining.
-
-## Assets
-
-This repository currently contains release assets:
-
-```text
-assets/
-  docs/      # Paper PDF
-  figures/   # Project and paper figures
-  videos/    # Demo videos
-```
-
-## Code
-
-Code is coming soon.
-
-We plan to release implementation details for:
-
-- data preprocessing and ManipEvent-5M style event annotations;
-- model training and staged memory tuning;
-- inference for autonomous and interactive control modes;
-- simulation and real-world evaluation scripts.
 
 ## Citation
 
