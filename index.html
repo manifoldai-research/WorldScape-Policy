@@ -103,7 +103,17 @@
 
       <section class="section video-feature" aria-label="WorldScape Policy teaser video">
         <div class="hero-media">
-          <img src="assets/videos/demo.gif" alt="WorldScape Policy 2.0 robot manipulation teaser" />
+          <video
+            autoplay
+            muted
+            loop
+            playsinline
+            preload="metadata"
+            poster="assets/videos/worldscape-policy-method-intro-poster.jpg"
+            aria-label="WorldScape Policy 2.0 method introduction"
+          >
+            <source src="assets/videos/worldscape-policy-method-intro.mp4" type="video/mp4" />
+          </video>
           <div class="media-label">WORLD · ACTION · MEMORY</div>
           <div class="media-caption">
             <span>Long-Horizon Memory</span>
@@ -366,14 +376,43 @@
         <div class="real-demo-grid">
           <article class="video-card">
             <img src="assets/videos/demo-memory.gif" alt="Autonomous inference mode demo" />
-            <div>
+            <div class="episode-task">
+              <strong>Pick up the white container and pour water into the orange cup until it is full, then return the container to its original position.</strong>
+            </div>
+            <div class="video-card-copy">
               <h3>Autonomous Inference Mode</h3>
               <p>Autonomous rollouts use memory to infer active subgoals from global instructions.</p>
             </div>
           </article>
           <article class="video-card">
-            <img src="assets/videos/demo-prompt.gif" alt="Interactive inference mode demo" />
-            <div>
+            <video
+              data-prompt-video
+              autoplay
+              muted
+              loop
+              playsinline
+              preload="auto"
+              poster="assets/figures/realworld2.png"
+            >
+              <source src="assets/videos/demo-prompt.mp4" type="video/mp4" />
+            </video>
+            <div class="prompt-carousel" aria-label="Fine-grained language prompts">
+              <div class="prompt-track">
+                <button class="prompt-card is-active" type="button" data-start="0">
+                  Pick up the red-capped bottle and place it in the blue basket.
+                </button>
+                <button class="prompt-card" type="button" data-start="3.2">
+                  Pick up the cardboard box and place it in the blue basket.
+                </button>
+                <button class="prompt-card" type="button" data-start="6.4">
+                  Pick up the white tissue and place it in the blue basket.
+                </button>
+              </div>
+              <div class="prompt-timeline" aria-hidden="true">
+                <span class="is-active"></span><span></span><span></span>
+              </div>
+            </div>
+            <div class="video-card-copy">
               <h3>Interactive Inference Mode</h3>
               <p>Fine-grained language instructions elicit precise response and execution abilities.</p>
             </div>

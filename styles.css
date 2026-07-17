@@ -572,7 +572,7 @@ figcaption strong {
   background: #f7f2fc;
 }
 
-.video-card div {
+.video-card > div {
   padding: 20px;
 }
 
@@ -581,10 +581,104 @@ figcaption strong {
   color: var(--muted);
 }
 
-.real-demo-grid .video-card img {
+.real-demo-grid .video-card > img,
+.real-demo-grid .video-card > video {
   display: block;
   aspect-ratio: 1254 / 1080;
   object-fit: cover;
+}
+
+.video-card > .prompt-carousel {
+  min-height: 118px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--line);
+  background: #fbf9ff;
+}
+
+.video-card > .episode-task {
+  display: flex;
+  min-height: 118px;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--line);
+  background: #fbf9ff;
+  text-align: center;
+}
+
+.episode-task strong {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 76px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: linear-gradient(120deg, #5220aa, #8b4ed4);
+  color: white;
+  font-size: 0.84rem;
+  font-weight: 760;
+  line-height: 1.35;
+  box-shadow: 0 8px 20px rgba(110, 53, 199, 0.24);
+}
+
+.prompt-track {
+  display: grid;
+  grid-auto-columns: minmax(220px, 78%);
+  grid-auto-flow: column;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+
+.prompt-track::-webkit-scrollbar {
+  display: none;
+}
+
+.prompt-card {
+  min-height: 76px;
+  padding: 12px 16px;
+  border: 1px solid #d9cde5;
+  border-radius: 10px;
+  background: white;
+  color: #6e6478;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 760;
+  line-height: 1.35;
+  text-align: center;
+  cursor: pointer;
+  scroll-snap-align: center;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.prompt-card.is-active {
+  border-color: transparent;
+  background: linear-gradient(120deg, #5220aa, #8b4ed4);
+  color: white;
+  box-shadow: 0 8px 20px rgba(110, 53, 199, 0.24);
+}
+
+.prompt-timeline {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.prompt-timeline span {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: #ddd3e8;
+  transition: background 180ms ease;
+}
+
+.prompt-timeline span.is-active {
+  background: var(--purple);
 }
 
 .showcase-scroll {
@@ -982,6 +1076,7 @@ pre {
 .real-demo-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 18px;
   margin-top: 18px;
 }

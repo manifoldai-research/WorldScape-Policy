@@ -57,10 +57,74 @@ if ("IntersectionObserver" in window) {
   });
 }
 
-document.querySelectorAll(".video-card video").forEach((video) => {
+document.querySelectorAll(".video-card video:not([data-prompt-video])").forEach((video) => {
   video.addEventListener("mouseenter", () => video.play().catch(() => {}));
   video.addEventListener("mouseleave", () => video.pause());
 });
+
+const promptVideo = document.querySelector("[data-prompt-video]");
+
+if (promptVideo instanceof HTMLVideoElement) {
+  const carousel = promptVideo.nextElementSibling;
+  const track = carousel?.querySelector(".prompt-track");
+  const cards = Array.from(carousel?.querySelectorAll(".prompt-card") ?? []);
+  const timelineItems = Array.from(carousel?.querySelectorAll(".prompt-timeline span") ?? []);
+  const starts = cards.map((card) => Number(card.dataset.start ?? 0));
+  let activeIndex = -1;
+  let animationFrame = 0;
+
+  const updatePrompt = () => {
+    const currentTime = promptVideo.currentTime;
+    const nextIndex = starts.findLastIndex((start) => currentTime >= start);
+    const index = Math.max(0, nextIndex);
+
+    if (index !== activeIndex) {
+      activeIndex = index;
+      cards.forEach((card, cardIndex) => card.classList.toggle("is-active", cardIndex === index));
+
+      const activeCard = cards[index];
+      if (track && activeCard instanceof HTMLElement) {
+        const targetLeft = activeCard.offsetLeft - (track.clientWidth - activeCard.offsetWidth) / 2;
+        track.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
+      }
+    }
+
+    timelineItems.forEach((item, itemIndex) => {
+      const segmentStart = starts[itemIndex];
+      const segmentEnd = starts[itemIndex + 1] ?? promptVideo.duration;
+      const progress =
+        itemIndex < index
+          ? 100
+          : itemIndex > index
+            ? 0
+            : Math.min(100, Math.max(0, ((currentTime - segmentStart) / (segmentEnd - segmentStart)) * 100));
+
+      item.classList.toggle("is-active", progress > 0);
+      item.style.background = `linear-gradient(to right, var(--purple) ${progress}%, #ddd3e8 ${progress}%)`;
+    });
+  };
+
+  const animatePrompt = () => {
+    updatePrompt();
+    if (!promptVideo.paused) animationFrame = window.requestAnimationFrame(animatePrompt);
+  };
+
+  cards.forEach((card, index) => {
+    card.addEventListener("click", () => {
+      promptVideo.currentTime = starts[index];
+      promptVideo.play().catch(() => {});
+      updatePrompt();
+    });
+  });
+
+  promptVideo.addEventListener("play", () => {
+    window.cancelAnimationFrame(animationFrame);
+    animationFrame = window.requestAnimationFrame(animatePrompt);
+  });
+  promptVideo.addEventListener("pause", () => window.cancelAnimationFrame(animationFrame));
+  promptVideo.addEventListener("loadedmetadata", updatePrompt);
+  promptVideo.play().catch(() => updatePrompt());
+}
 
 document.querySelectorAll(".showcase-item video").forEach((video) => {
   video.play().catch(() => {});
