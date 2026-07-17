@@ -269,6 +269,7 @@ mark {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   width: 196px;
   min-height: 46px;
   padding: 0 20px;
@@ -281,6 +282,12 @@ mark {
   text-decoration: none;
   box-shadow: 0 8px 24px rgba(16, 32, 47, 0.08);
   white-space: nowrap;
+}
+
+.github-logo {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
 }
 
 .button.primary {
@@ -668,6 +675,16 @@ pre {
   border-top: 1px solid var(--line);
   color: var(--muted);
   font-size: 0.92rem;
+}
+
+.visitor-counter {
+  color: #6f5b81;
+  font-weight: 700;
+}
+
+.visitor-counter strong {
+  color: var(--purple);
+  font-weight: 850;
 }
 
 @media (max-width: 940px) {
