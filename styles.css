@@ -581,6 +581,12 @@ figcaption strong {
   color: var(--muted);
 }
 
+.real-demo-grid .video-card img {
+  display: block;
+  aspect-ratio: 1254 / 1080;
+  object-fit: cover;
+}
+
 .showcase-scroll {
   display: grid;
   grid-auto-columns: minmax(360px, 43%);

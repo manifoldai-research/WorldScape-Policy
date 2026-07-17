@@ -175,7 +175,7 @@
           <p class="eyebrow">Overview</p>
         </div>
         <figure class="figure-panel">
-          <img src="assets/figures/framework.png" alt="WorldScape Policy 2.0 framework diagram" />
+          <img src="assets/figures/framework-hd.png" alt="WorldScape Policy 2.0 framework diagram" />
           <figcaption>
             <strong>Figure 1: WorldScape Policy 2.0 Framework Overview.</strong> Built on
             ManipEvent-5M, the model encodes text, goal-image, and video prompts into a unified
@@ -204,14 +204,14 @@
         </div>
         <div class="method-grid">
           <figure class="figure-card">
-            <img src="assets/figures/overview.png" alt="Comparison of different WAM paradigms" />
+            <img src="assets/figures/overview-hd.png" alt="Comparison of different WAM paradigms" />
             <figcaption>
               <strong>Figure 2: WAM Paradigm Comparison.</strong> WorldScape Policy 2.0 moves
               from static or sliding-window context to reasoning-augmented multimodal memory.
             </figcaption>
           </figure>
           <figure class="figure-card">
-            <img src="assets/figures/lstm.png" alt="Reasoning augmented long short-term memory diagram" />
+            <img src="assets/figures/lstm-hd.png" alt="Reasoning augmented long short-term memory diagram" />
             <figcaption>
               <strong>Figure 3: Reasoning-Augmented Memory.</strong> Global-history, local-active,
               and event-boundary latents are retrieved and gated into current planning tokens.
@@ -252,7 +252,7 @@
           </div>
         </div>
         <figure class="figure-card flush">
-          <img src="assets/figures/pipeline.png" alt="ManipEvent-5M construction pipeline" />
+          <img src="assets/figures/pipeline-hd.png" alt="ManipEvent-5M construction pipeline" />
           <figcaption>
             <strong>Figure 4: ManipEvent-5M Construction Pipeline.</strong> Heterogeneous
             manipulation sources are segmented, captioned, aligned with action labels, and
@@ -262,14 +262,14 @@
       </section>
       <section class="section dataset-visuals">
         <figure class="figure-card">
-          <img src="assets/figures/distribution2.png" alt="ManipEvent-5M distribution statistics" />
+          <img src="assets/figures/distribution2-hd.png" alt="ManipEvent-5M distribution statistics" />
           <figcaption>
             <strong>Figure 5: ManipEvent-5M Statistics.</strong> Dataset distributions across
             episode length, subtask count, atomic actions, and segment duration.
           </figcaption>
         </figure>
         <figure class="figure-card">
-          <img src="assets/figures/exmp2.png" alt="Coffee making multimodal prompt example" />
+          <img src="assets/figures/exmp2-hd.png" alt="Coffee making multimodal prompt example" />
           <figcaption>
             <strong>Figure 6: Multimodal Prompt Example.</strong> A long-horizon coffee task
             represented with global instruction, goal image, demonstration video, and event captions.
@@ -338,10 +338,10 @@
               <table>
                 <thead><tr><th>Method</th><th>Clean</th><th>Random</th><th>Average</th></tr></thead>
                 <tbody>
-                  <tr><td>&pi;<sub>0.5</sub></td><td>—</td><td>—</td><td>—</td></tr>
-                  <tr><td>Fast-WAM</td><td>—</td><td>—</td><td>—</td></tr>
-                  <tr><td>Motus</td><td>—</td><td>—</td><td>—</td></tr>
-                  <tr><td>LingBot-VA</td><td>—</td><td>—</td><td>—</td></tr>
+                  <tr><td>&pi;<sub>0.5</sub></td><td>82.7%</td><td>76.8%</td><td>79.8%</td></tr>
+                  <tr><td>Fast-WAM</td><td>91.9%</td><td>91.8%</td><td>91.9%</td></tr>
+                  <tr><td>Motus</td><td>88.7%</td><td>87.0%</td><td>87.9%</td></tr>
+                  <tr><td>LingBot-VA</td><td>92.9%</td><td>91.6%</td><td>92.3%</td></tr>
                   <tr class="ours"><td>WorldScape Policy 2.0</td><td>—</td><td>—</td><td>—</td></tr>
                 </tbody>
               </table>
@@ -365,21 +365,17 @@
         </div>
         <div class="real-demo-grid">
           <article class="video-card">
-            <video controls muted loop playsinline preload="metadata" poster="assets/figures/realworld2.png">
-              <source src="assets/videos/demo-memory.mp4" type="video/mp4" />
-            </video>
+            <img src="assets/videos/demo-memory.gif" alt="Autonomous inference mode demo" />
             <div>
               <h3>Autonomous Inference Mode</h3>
               <p>Autonomous rollouts use memory to infer active subgoals from global instructions.</p>
             </div>
           </article>
           <article class="video-card">
-            <video controls muted loop playsinline preload="metadata" poster="assets/figures/realworld2.png">
-              <source src="assets/videos/demo-prompt.mp4" type="video/mp4" />
-            </video>
+            <img src="assets/videos/demo-prompt.gif" alt="Interactive inference mode demo" />
             <div>
               <h3>Interactive Inference Mode</h3>
-              <p>Goal images and demonstration videos provide persistent context for skill transfer.</p>
+              <p>Fine-grained language instructions elicit precise response and execution abilities.</p>
             </div>
           </article>
         </div>
