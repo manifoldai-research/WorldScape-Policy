@@ -19,10 +19,9 @@ VIDEO_DIR = ASSETS / "videos"
 FIGURE_DIR = ASSETS / "figures"
 BUILD_DIR = VIDEO_DIR / ".method-video-build"
 
-WIDTH, HEIGHT, FPS, DURATION = 1920, 1080, 30, 87
+WIDTH, HEIGHT, FPS, DURATION = 1920, 1080, 30, 110
 FONT_REGULAR = "/System/Library/Fonts/Hiragino Sans GB.ttc"
 FONT_BOLD = "/System/Library/Fonts/STHeiti Medium.ttc"
-FONT_LATIN_BOLD = "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
 
 INK = (242, 244, 255)
 MUTED = (161, 168, 192)
@@ -34,7 +33,7 @@ BG = (8, 10, 19)
 
 
 def font(size: int, bold: bool = False, latin: bool = False) -> ImageFont.FreeTypeFont:
-    path = FONT_LATIN_BOLD if latin else (FONT_BOLD if bold else FONT_REGULAR)
+    path = FONT_BOLD if bold else FONT_REGULAR
     return ImageFont.truetype(path, size)
 
 
@@ -112,20 +111,32 @@ FIG_MEMORY = Image.open(FIGURE_DIR / "lstm-hd.png").convert("RGB")
 FIG_PIPELINE = Image.open(FIGURE_DIR / "pipeline-hd.png").convert("RGB")
 
 
-def paste_contain(img: Image.Image, source: Image.Image, box: tuple[int, int, int, int],
-                  alpha: int, padding: tuple[int, int] = (36, 24)) -> None:
+def paste_fill(img: Image.Image, source: Image.Image, box: tuple[int, int, int, int],
+               alpha: int) -> None:
     x1, y1, x2, y2 = box
     w, h = x2 - x1, y2 - y1
-    px, py = padding
-    card = Image.new("RGBA", (w, h), (250, 250, 250, alpha))
-    scale = min((w - 2 * px) / source.width, (h - 2 * py) / source.height)
+    src = source.resize((w, h), Image.Resampling.LANCZOS).convert("RGBA")
+    src.putalpha(alpha)
+    mask = Image.new("L", (w, h), alpha)
+    mask_draw = ImageDraw.Draw(mask)
+    mask_draw.rounded_rectangle((0, 0, w, h), radius=24, fill=alpha)
+    img.paste(src, (x1, y1), mask)
+
+
+def paste_padded(img: Image.Image, source: Image.Image, box: tuple[int, int, int, int],
+                 alpha: int, padding_x: int = 30, padding_y: int = 8) -> None:
+    x1, y1, x2, y2 = box
+    w, h = x2 - x1, y2 - y1
+    card = Image.new("RGBA", (w, h), (255, 255, 255, alpha))
+    available_w = w - 2 * padding_x
+    available_h = h - 2 * padding_y
+    scale = min(available_w / source.width, available_h / source.height)
     size = (max(1, int(source.width * scale)), max(1, int(source.height * scale)))
     src = source.resize(size, Image.Resampling.LANCZOS).convert("RGBA")
     src.putalpha(alpha)
     card.paste(src, ((w - size[0]) // 2, (h - size[1]) // 2), src)
-    mask = Image.new("L", (w, h), alpha)
-    mask_draw = ImageDraw.Draw(mask)
-    mask_draw.rounded_rectangle((0, 0, w, h), radius=24, fill=alpha)
+    mask = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, w, h), radius=24, fill=alpha)
     img.paste(card, (x1, y1), mask)
 
 
@@ -152,9 +163,9 @@ def render_challenge(frame: np.ndarray, t: float) -> None:
     text(draw, (110, 210), "WAMs need more than short context", 58, bold=True,
          alpha=a, latin=True)
     cards = [
-        ("01", "Limited Temporal Context", "Similar scenes can require\ndifferent actions.", PURPLE),
-        ("02", "Coarse Language Grounding", "Episode labels miss\natomic action intent.", ORANGE),
-        ("03", "Text-Only Interaction", "Goals and demonstrations\nremain unused.", CYAN),
+        ("01", "Limited Temporal Context", "Similar scenes can imply\ndifferent next robot actions.", PURPLE),
+        ("02", "Coarse Language Grounding", "Episode labels obscure\nfine-grained atomic intent.", ORANGE),
+        ("03", "Text-Only Interaction", "Visual goals & demonstrations\nremain unavailable to the model.", CYAN),
     ]
     for i, (num, title, body, accent) in enumerate(cards):
         local = enter(t, 7.0 + i * 0.4)
@@ -178,10 +189,10 @@ def render_contributions(frame: np.ndarray, t: float) -> None:
     text(draw, (WIDTH // 2, 220), "A steerable, memory-grounded World Action Model", 53,
          bold=True, anchor="mm", alpha=a, latin=True)
     cards = [
-        ("01", "Long Short-Term\nMemory", "Local dynamics +\nglobal task progress", CYAN),
-        ("02", "Implicit Subgoal\nReasoning", "Progress-aware\nlatent planning", ORANGE),
-        ("03", "Native Multimodal\nControl", "Text + goal image +\nvideo demonstration", PURPLE),
-        ("04", "ManipEvent-5M\nDataset", "Event-grounded\nmultimodal pretraining", GREEN),
+        ("01", "Long Short-Term\nMemory", "Local interaction dynamics\n& global progress tracking", CYAN),
+        ("02", "Implicit Subgoal\nReasoning", "Progress-aware retrieval\n& latent subgoal inference", ORANGE),
+        ("03", "Native Multimodal\nControl", "Text, goal image & video\nwithin one control interface", PURPLE),
+        ("04", "ManipEvent-5M\nDataset", "Nearly five million events\nwith aligned supervision", GREEN),
     ]
     for i, (num, title, body, accent) in enumerate(cards):
         local = enter(t, 14 + i * 0.28)
@@ -230,7 +241,7 @@ def render_insight(frame: np.ndarray, t: float) -> None:
          anchor="mm", alpha=a, spacing=14, latin=True)
     text(draw, (1445, 650), "Task progress enables\nimplicit subgoal planning", 27,
          color=MUTED, anchor="mm", alpha=a, spacing=10, latin=True)
-    text(draw, (WIDTH // 2, 865), "LOCAL DYNAMICS  +  GLOBAL PROGRESS", 30,
+    text(draw, (WIDTH // 2, 865), "LOCAL DYNAMICS  &  GLOBAL PROGRESS", 30,
          color=INK, bold=True, anchor="mm", alpha=a, latin=True)
     commit(frame, img)
 
@@ -242,7 +253,8 @@ def render_framework(frame: np.ndarray, t: float) -> None:
     text(draw, (110, 205), "One backbone. Multiple ways to steer.", 58,
          bold=True, alpha=a, latin=True)
     panel(draw, (110, 305, 1810, 945), a, PURPLE)
-    paste_contain(img, FIG_FRAMEWORK, (145, 335, 1775, 790), a, (55, 34))
+    paste_padded(img, FIG_FRAMEWORK, (145, 335, 1775, 792), a,
+                 padding_x=42, padding_y=8)
     labels = [
         (150, "MULTIMODAL PROMPTS", CYAN),
         (700, "REASONING MEMORY", ORANGE),
@@ -256,29 +268,12 @@ def render_framework(frame: np.ndarray, t: float) -> None:
 def render_memory(frame: np.ndarray, t: float) -> None:
     a = int(255 * scene_alpha(t, 34, 47))
     img, draw = pil_layer(frame)
-    text(draw, (110, 135), "推理增强的长短期记忆", 32, color=ORANGE, bold=True, alpha=a)
-    text(draw, (110, 195), "Retrieve what matters. Infer what comes next.", 55,
-         bold=True, alpha=a, latin=True)
-    panel(draw, (95, 290, 1825, 950), a, ORANGE)
-    paste_contain(img, FIG_MEMORY, (140, 320, 1780, 755), int(a * 0.94), (55, 28))
-    y = 805
-    nodes = [
-        (155, "GLOBAL\nHISTORY", ORANGE),
-        (410, "LOCAL\nACTIVE", ORANGE),
-        (665, "EVENT\nBOUNDARY", ORANGE),
-        (990, "RETRIEVAL\n+ GATING", CYAN),
-        (1320, "IMPLICIT\nSUBGOAL", PURPLE),
-        (1590, "ACTION", GREEN),
-    ]
-    for i, (x, label, accent) in enumerate(nodes):
-        aa = int(a * enter(t, 35 + i * 0.35))
-        draw.rounded_rectangle((x, y, x + 205, y + 105), radius=18,
-                               fill=(10, 12, 23, aa), outline=(*accent, aa), width=3)
-        text(draw, (x + 102, y + 52), label, 20, color=accent, bold=True,
-             anchor="mm", alpha=aa, latin=True, spacing=5)
-        if i < len(nodes) - 1:
-            nx = nodes[i + 1][0]
-            draw.line((x + 205, y + 52, nx, y + 52), fill=(*INK, aa // 2), width=3)
+    text(draw, (WIDTH // 2, 115), "推理增强的长短期记忆", 29, color=ORANGE,
+         bold=True, anchor="mm", alpha=a)
+    text(draw, (WIDTH // 2, 175), "Retrieve what matters. Infer what comes next.", 48,
+         bold=True, anchor="mm", alpha=a, latin=True)
+    panel(draw, (220, 205, 1700, 1035), a, ORANGE)
+    paste_fill(img, FIG_MEMORY, (240, 225, 1680, 1016), int(a * 0.97))
     commit(frame, img)
 
 
@@ -305,7 +300,7 @@ def render_multimodal(frame: np.ndarray, t: float) -> None:
     panel(draw, (1375, 405, 1760, 720), a, GREEN)
     text(draw, (1567, 495), "UNIFIED WAM", 31, color=GREEN, bold=True,
          anchor="mm", alpha=a, latin=True)
-    text(draw, (1567, 605), "Video + Action\nPrediction", 33, bold=True,
+    text(draw, (1567, 605), "Video & Action\nPrediction", 33, bold=True,
          anchor="mm", alpha=a, spacing=12, latin=True)
     text(draw, (WIDTH // 2, 870), "AUTONOMOUS PLANNING  ·  INSTRUCTION FOLLOWING  ·  IN-CONTEXT ADAPTATION",
          27, color=MUTED, bold=True, anchor="mm", alpha=a, latin=True)
@@ -321,11 +316,11 @@ def render_training(frame: np.ndarray, t: float) -> None:
          bold=True, anchor="mm", alpha=a, latin=True)
     stages = [
         ("STAGE 01", "Event-Grounded\nPretraining",
-         "Fine-grained grounding\nMultimodal prompts\nShort-term visual memory", CYAN),
+         "Learn multimodal grounding\nwith short-term visual memory", CYAN),
         ("STAGE 02", "Memory-Aware\nMid-Training",
-         "Event-memory retrieval\nSemantic forcing\nImplicit subgoal planning", ORANGE),
+         "Introduce memory retrieval\n& semantic latent forcing", ORANGE),
         ("STAGE 03", "Interactive\nPost-Training",
-         "Downstream embodiments\nInstruction following\nVisual-prompted control", PURPLE),
+         "Adapt to target embodiments\n& interactive control modes", PURPLE),
     ]
     for i, (stage, title, body, accent) in enumerate(stages):
         aa = int(a * enter(t, 56 + i * 0.35))
@@ -336,7 +331,7 @@ def render_training(frame: np.ndarray, t: float) -> None:
         text(draw, (x + 250, 535), title, 33, bold=True, anchor="mm",
              alpha=aa, latin=True, spacing=10)
         draw.line((x + 75, 625, x + 425, 625), fill=(*accent, aa // 2), width=2)
-        text(draw, (x + 250, 705), body, 21, color=MUTED, anchor="mm",
+        text(draw, (x + 250, 700), body, 21, color=MUTED, anchor="mm",
              alpha=aa, latin=True, spacing=8)
         if i < 2:
             text(draw, (x + 535, 575), "→", 46, color=INK, bold=True,
@@ -352,8 +347,9 @@ def render_dataset(frame: np.ndarray, t: float) -> None:
     img, draw = pil_layer(frame)
     text(draw, (110, 140), "事件级多模态预训练", 32, color=CYAN, bold=True, alpha=a)
     text(draw, (110, 200), "ManipEvent-5M", 67, bold=True, alpha=a, latin=True)
-    panel(draw, (705, 300, 1810, 720), a, PURPLE)
-    paste_contain(img, FIG_PIPELINE, (745, 340, 1770, 675), int(a * 0.96), (70, 34))
+    panel(draw, (680, 280, 1820, 660), a, PURPLE)
+    paste_padded(img, FIG_PIPELINE, (690, 290, 1810, 650), int(a * 0.97),
+                 padding_x=28, padding_y=10)
     stats = [("4.89M", "EVENT SEGMENTS"), ("512M", "VIDEO FRAMES"), ("744K", "EPISODES")]
     for i, (value, label) in enumerate(stats):
         y = 350 + i * 175
@@ -362,33 +358,49 @@ def render_dataset(frame: np.ndarray, t: float) -> None:
              bold=True, alpha=aa, latin=True)
         text(draw, (130, y + 82), label, 25, color=MUTED, bold=True,
              alpha=aa, latin=True)
-    pill(draw, (780, 790, 1735, 860),
-         "TEXT  +  GOAL IMAGE  +  VIDEO DEMO  +  ACTION TRAJECTORY", PURPLE, a)
-    text(draw, (1250, 925), "Heterogeneous data → ordered events → aligned multimodal supervision",
+    pill(draw, (780, 735, 1735, 805),
+         "TEXT  &  GOAL IMAGE  &  VIDEO DEMO  &  ACTION TRAJECTORY", PURPLE, a)
+    text(draw, (1250, 875), "Heterogeneous data → ordered events → aligned multimodal supervision",
          23, color=MUTED, anchor="mm", alpha=a, latin=True)
     commit(frame, img)
 
 
-def render_demo_base(frame: np.ndarray, t: float) -> None:
-    a = int(255 * scene_alpha(t, 70, 81))
+def render_capability_demo(frame: np.ndarray, t: float, start: float, end: float,
+                           number: str, title: str, subtitle: str, accent) -> None:
+    a = int(255 * scene_alpha(t, start, end))
     img, draw = pil_layer(frame)
-    text(draw, (WIDTH // 2, 155), "From world modeling to real-world control", 56,
-         bold=True, anchor="mm", alpha=a, latin=True)
-    text(draw, (WIDTH // 2, 220), "预测世界，也执行动作", 31, color=CYAN,
-         bold=True, anchor="mm", alpha=a)
-    panel(draw, (100, 310, 920, 820), a, CYAN)
-    panel(draw, (1000, 310, 1820, 820), a, PURPLE)
-    text(draw, (510, 865), "AUTONOMOUS PLANNING", 28, color=CYAN, bold=True,
-         anchor="mm", alpha=a, latin=True)
-    text(draw, (1410, 865), "FINE-GRAINED CONTROL", 28, color=PURPLE, bold=True,
-         anchor="mm", alpha=a, latin=True)
-    text(draw, (WIDTH // 2, 965), "Joint video-action prediction provides dense supervision for physically grounded actions.",
-         26, color=MUTED, anchor="mm", alpha=a, latin=True)
+    text(draw, (95, 125), f"CAPABILITY  {number} / 04", 24, color=accent,
+         bold=True, alpha=a, latin=True)
+    text(draw, (WIDTH // 2, 125), title, 46, bold=True, anchor="mm",
+         alpha=a, latin=True)
+    text(draw, (1820, 125), subtitle, 25, color=accent, bold=True,
+         anchor="ra", alpha=a)
+    panel(draw, (250, 205, 1670, 1018), a, accent)
     commit(frame, img)
 
 
+def render_demo_long(frame: np.ndarray, t: float) -> None:
+    render_capability_demo(frame, t, 70, 79, "01",
+                           "Long-Horizon Robotic Manipulation", "长程自主规划", CYAN)
+
+
+def render_demo_memory(frame: np.ndarray, t: float) -> None:
+    render_capability_demo(frame, t, 79, 87, "02",
+                           "Memory-Dependent Visual Reasoning", "记忆依赖的视觉推理", ORANGE)
+
+
+def render_demo_cross(frame: np.ndarray, t: float) -> None:
+    render_capability_demo(frame, t, 87, 95, "03",
+                           "Cross-Embodiment Skill Transfer", "跨形态技能迁移", PURPLE)
+
+
+def render_demo_fine(frame: np.ndarray, t: float) -> None:
+    render_capability_demo(frame, t, 95, 104, "04",
+                           "Fine-Grained Instruction Following", "细粒度指令跟随", GREEN)
+
+
 def render_outro(frame: np.ndarray, t: float) -> None:
-    a = int(255 * scene_alpha(t, 81, 87))
+    a = int(255 * scene_alpha(t, 104, 110))
     img, draw = pil_layer(frame)
     text(draw, (WIDTH // 2, 280), "WorldScape Policy 2.0", 91, bold=True,
          anchor="mm", alpha=a, latin=True)
@@ -423,8 +435,11 @@ def render_silent_video(path: Path) -> None:
         (47, 55, render_multimodal),
         (55, 63, render_training),
         (63, 70, render_dataset),
-        (70, 81, render_demo_base),
-        (81, 87, render_outro),
+        (70, 79, render_demo_long),
+        (79, 87, render_demo_memory),
+        (87, 95, render_demo_cross),
+        (95, 104, render_demo_fine),
+        (104, 110, render_outro),
     ]
     for index in range(DURATION * FPS):
         t = index / FPS
@@ -445,44 +460,73 @@ def generate_music(path: Path) -> None:
     count = sample_rate * DURATION
     t = np.arange(count, dtype=np.float64) / sample_rate
     audio = np.zeros(count, dtype=np.float64)
-    progression = [
-        (55.00, 65.41, 82.41),
-        (49.00, 61.74, 73.42),
-        (41.20, 55.00, 65.41),
-        (49.00, 61.74, 82.41),
+    beat = 60.0 / 108.0
+    roots = [73.42, 58.27, 87.31, 65.41]
+    chords = [
+        (73.42, 87.31, 110.00),
+        (58.27, 73.42, 87.31),
+        (87.31, 110.00, 130.81),
+        (65.41, 82.41, 98.00),
     ]
-    for block in range(15):
-        start = block * 6
-        chord = progression[block % len(progression)]
-        env = np.clip((t - start) / 1.8, 0, 1) * np.clip((start + 6.5 - t) / 1.8, 0, 1)
-        pad = np.zeros_like(t)
-        for note in chord:
-            pad += np.sin(2 * np.pi * note * t)
-            pad += 0.38 * np.sin(2 * np.pi * note * 2.003 * t + 0.8)
-        audio += 0.018 * env * pad
-    notes = [220.00, 246.94, 329.63, 293.66, 246.94, 369.99, 329.63, 293.66]
-    for i, hit in enumerate(np.arange(2.0, DURATION, 0.75)):
-        dt = t - hit
-        active = ((dt >= 0) & (dt < 1.3)).astype(np.float64)
-        env = active * np.exp(-np.maximum(dt, 0) * 4.2)
-        note = notes[i % len(notes)]
-        pluck = np.sin(2 * np.pi * note * dt) + 0.28 * np.sin(2 * np.pi * note * 2 * dt)
-        audio += 0.022 * env * pluck
-    for hit in np.arange(4.0, DURATION, 2.0):
-        dt = t - hit
-        active = ((dt >= 0) & (dt < 0.55)).astype(np.float64)
-        env = active * np.exp(-np.maximum(dt, 0) * 11)
-        pulse = np.sin(2 * np.pi * (46 * dt - 7 * dt * dt)) * env
-        audio += 0.036 * pulse
-    for marker in (13, 22, 34, 47, 55, 63, 70, 81):
-        dt = t - marker
-        active = ((dt >= 0) & (dt < 3.0)).astype(np.float64)
-        env = active * np.exp(-np.maximum(dt, 0) * 1.5)
-        swell = np.sin(2 * np.pi * 110 * dt) + 0.5 * np.sin(2 * np.pi * 164.81 * dt)
-        audio += 0.018 * env * swell
-    audio *= np.clip(t / 2.5, 0, 1) * np.clip((DURATION - t) / 4.0, 0, 1)
-    audio = np.tanh(audio * 1.15)
-    stereo = np.stack((audio, np.roll(audio, 960) * 0.96), axis=1)
+
+    def span(start: float, duration: float) -> tuple[slice, np.ndarray]:
+        i0 = max(0, int(start * sample_rate))
+        i1 = min(count, int((start + duration) * sample_rate))
+        local_t = np.arange(max(0, i1 - i0), dtype=np.float64) / sample_rate
+        return slice(i0, i1), local_t
+
+    phrase = beat * 8
+    for block, start in enumerate(np.arange(0, DURATION, phrase)):
+        section, local_t = span(start, phrase + beat * 2)
+        attack = np.clip(local_t / 1.2, 0, 1)
+        release = np.clip((phrase + beat * 2 - local_t) / 1.4, 0, 1)
+        pad = np.zeros_like(local_t)
+        for note in chords[block % 4]:
+            pad += np.sin(2 * np.pi * note * local_t)
+            pad += 0.20 * np.sin(2 * np.pi * note * 2.002 * local_t + 0.7)
+        audio[section] += 0.014 * attack * release * pad
+
+    for index, start in enumerate(np.arange(0, DURATION, beat)):
+        section, local_t = span(start, 0.26)
+        kick_env = np.exp(-local_t * 16)
+        kick = np.sin(2 * np.pi * (66 * local_t - 36 * local_t * local_t))
+        kick_level = 0.060 if index % 4 == 0 else 0.035
+        audio[section] += kick_level * kick_env * kick
+
+        bass_section, bass_t = span(start, beat * 0.78)
+        root = roots[(index // 8) % 4]
+        bass_env = np.exp(-bass_t * 4.3)
+        bass = np.sin(2 * np.pi * root * bass_t) + 0.16 * np.sin(4 * np.pi * root * bass_t)
+        audio[bass_section] += 0.034 * bass_env * bass
+
+        if index % 2 == 1:
+            clap_section, clap_t = span(start, 0.18)
+            clap_env = np.exp(-clap_t * 24)
+            clap = np.sin(2 * np.pi * 920 * clap_t) + 0.35 * np.sin(2 * np.pi * 1380 * clap_t)
+            audio[clap_section] += 0.009 * clap_env * clap
+
+        hat_section, hat_t = span(start + beat / 2, 0.07)
+        hat_env = np.exp(-hat_t * 62)
+        hat = np.sin(2 * np.pi * 2100 * hat_t) + 0.22 * np.sin(2 * np.pi * 3150 * hat_t)
+        audio[hat_section] += 0.005 * hat_env * hat
+
+    arp_notes = [293.66, 349.23, 440.00, 587.33, 349.23, 523.25, 440.00, 659.25]
+    for index, start in enumerate(np.arange(beat / 2, DURATION, beat / 2)):
+        arp_section, arp_t = span(start, beat * 0.42)
+        note = arp_notes[index % len(arp_notes)]
+        arp_env = np.exp(-arp_t * 12)
+        arp = np.sin(2 * np.pi * note * arp_t) + 0.14 * np.sin(4 * np.pi * note * arp_t)
+        audio[arp_section] += 0.012 * arp_env * arp
+
+    for marker in (13, 22, 34, 47, 55, 63, 70, 79, 87, 95, 104):
+        section, local_t = span(marker - 1.0, 1.6)
+        rise_env = np.sin(np.pi * np.clip(local_t / 1.6, 0, 1)) ** 2
+        phase = 2 * np.pi * (150 * local_t + 190 * local_t * local_t)
+        audio[section] += 0.014 * rise_env * np.sin(phase)
+
+    audio *= np.clip(t / 2.2, 0, 1) * np.clip((DURATION - t) / 4.0, 0, 1)
+    audio = np.tanh(audio * 1.2)
+    stereo = np.stack((audio, np.roll(audio, 880) * 0.95), axis=1)
     pcm = np.int16(np.clip(stereo, -1, 1) * 32767)
     with wave.open(str(path), "wb") as handle:
         handle.setnchannels(2)
@@ -492,25 +536,40 @@ def generate_music(path: Path) -> None:
 
 
 def compose(intermediate: Path, music: Path, output: Path) -> None:
-    left = VIDEO_DIR / "demo-memory.mp4"
-    right = VIDEO_DIR / "demo-prompt.mp4"
+    long_horizon = VIDEO_DIR / "long-horizon-robotic-manipulation.mp4"
+    memory_reasoning = VIDEO_DIR / "memory-dependent-visual-reasoning.mp4"
+    cross_embodiment = VIDEO_DIR / "cross-embodiment-skill-transfer.mp4"
+    fine_grained = VIDEO_DIR / "fine-grained-instruction-following.mp4"
     filters = (
-        "[1:v]setpts=PTS-STARTPTS+70/TB,"
-        "scale=760:460:force_original_aspect_ratio=decrease,"
-        "pad=760:460:(ow-iw)/2:(oh-ih)/2:color=0x090b14[left];"
-        "[2:v]setpts=PTS-STARTPTS+70/TB,"
-        "scale=760:460:force_original_aspect_ratio=decrease,"
-        "pad=760:460:(ow-iw)/2:(oh-ih)/2:color=0x090b14[right];"
-        "[0:v][left]overlay=130:335:enable='between(t,70.2,80.7)'[v1];"
-        "[v1][right]overlay=1030:335:enable='between(t,70.2,80.7)'[vout]"
+        "[1:v]trim=duration=9,setpts=PTS-STARTPTS,scale=1380:776,setsar=1,"
+        "format=yuva420p,fade=t=in:st=0:d=0.4:alpha=1,fade=t=out:st=8.4:d=0.6:alpha=1,"
+        "setpts=PTS+70/TB[demo1];"
+        "[2:v]trim=duration=8,setpts=PTS-STARTPTS,scale=1380:776,setsar=1,"
+        "format=yuva420p,fade=t=in:st=0:d=0.4:alpha=1,fade=t=out:st=7.4:d=0.6:alpha=1,"
+        "setpts=PTS+79/TB[demo2];"
+        "[3:v]trim=duration=8,setpts=PTS-STARTPTS,scale=1380:776,setsar=1,"
+        "format=yuva420p,fade=t=in:st=0:d=0.4:alpha=1,fade=t=out:st=7.4:d=0.6:alpha=1,"
+        "setpts=PTS+87/TB[demo3];"
+        "[4:v]trim=duration=9,setpts=PTS-STARTPTS,scale=1380:776,setsar=1,"
+        "format=yuva420p,fade=t=in:st=0:d=0.4:alpha=1,fade=t=out:st=8.4:d=0.6:alpha=1,"
+        "setpts=PTS+95/TB[demo4];"
+        "[0:v][demo1]overlay=270:225:enable='between(t,70,79)'[v1];"
+        "[v1][demo2]overlay=270:225:enable='between(t,79,87)'[v2];"
+        "[v2][demo3]overlay=270:225:enable='between(t,87,95)'[v3];"
+        "[v3][demo4]overlay=270:225:enable='between(t,95,104)'[vout]"
     )
     subprocess.run([
         "ffmpeg", "-y", "-v", "warning",
-        "-i", str(intermediate), "-i", str(left), "-i", str(right), "-i", str(music),
+        "-i", str(intermediate),
+        "-stream_loop", "-1", "-i", str(long_horizon),
+        "-stream_loop", "-1", "-i", str(memory_reasoning),
+        "-stream_loop", "-1", "-i", str(cross_embodiment),
+        "-stream_loop", "-1", "-i", str(fine_grained),
+        "-i", str(music),
         "-filter_complex", filters,
-        "-map", "[vout]", "-map", "3:a:0",
+        "-map", "[vout]", "-map", "5:a:0",
         "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-pix_fmt", "yuv420p",
-        "-af", "loudnorm=I=-21:LRA=7:TP=-1.5",
+        "-af", "loudnorm=I=-20:LRA=7:TP=-1.5",
         "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
         "-t", str(DURATION), str(output),
     ], check=True)

@@ -126,12 +126,32 @@ a {
   padding-top: clamp(42px, 6vw, 76px);
   padding-bottom: clamp(42px, 6vw, 76px);
   position: relative;
+  overflow: hidden;
   text-align: center;
 }
 
+.hero.section {
+  width: 100%;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(12, 7, 27, 0.2) 0%, rgba(17, 8, 38, 0.16) 55%, rgba(12, 5, 28, 0.64) 100%),
+    linear-gradient(90deg, rgba(13, 8, 29, 0.54) 0%, rgba(29, 13, 54, 0.2) 48%, rgba(10, 6, 23, 0.12) 100%),
+    url("assets/figures/worldscape-hero-robot-arm.png") center center / cover no-repeat;
+  transform: scale(1.015);
+}
+
 .hero-copy {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: 1120px;
+  padding-inline: 28px;
+  box-sizing: border-box;
 }
 
 .eyebrow {
@@ -300,6 +320,38 @@ mark {
 .button[aria-disabled="true"] {
   color: #7a8793;
   cursor: not-allowed;
+}
+
+.hero h1 {
+  color: #fff;
+  text-shadow: 0 8px 36px rgba(8, 2, 18, 0.36);
+}
+
+.hero h1 span {
+  background: linear-gradient(100deg, #fff 0%, #dbc5ff 48%, #bfa0ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero .subtitle {
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 3px 18px rgba(8, 2, 18, 0.5);
+}
+
+.hero .hero-team {
+  color: #e4d4ff;
+}
+
+.hero .button:not(.primary) {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  backdrop-filter: blur(12px);
+}
+
+.hero .button[aria-disabled="true"] {
+  color: rgba(255, 255, 255, 0.68);
 }
 
 .hero-media,
@@ -471,7 +523,7 @@ figcaption strong {
 }
 
 .video-feature {
-  padding-top: 0;
+  padding-top: clamp(76px, 9vw, 128px);
 }
 
 .overview-section {

@@ -169,3 +169,24 @@ if (showcaseScroller && !window.matchMedia("(prefers-reduced-motion: reduce)").m
 
   window.requestAnimationFrame(scrollShowcase);
 }
+
+const currentDate = document.querySelector("#current-date");
+
+if (currentDate instanceof HTMLTimeElement) {
+  const updateCurrentDate = () => {
+    const now = new Date();
+    currentDate.dateTime = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0"),
+    ].join("-");
+    currentDate.textContent = new Intl.DateTimeFormat("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }).format(now);
+  };
+
+  updateCurrentDate();
+  window.setInterval(updateCurrentDate, 60_000);
+}
