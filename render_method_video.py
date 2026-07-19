@@ -19,7 +19,7 @@ VIDEO_DIR = ASSETS / "videos"
 FIGURE_DIR = ASSETS / "figures"
 BUILD_DIR = VIDEO_DIR / ".method-video-build"
 
-WIDTH, HEIGHT, FPS, DURATION = 1920, 1080, 30, 110
+WIDTH, HEIGHT, FPS, DURATION = 1920, 1080, 30, 130
 FONT_REGULAR = "/System/Library/Fonts/Hiragino Sans GB.ttc"
 FONT_BOLD = "/System/Library/Fonts/STHeiti Medium.ttc"
 
@@ -379,28 +379,90 @@ def render_capability_demo(frame: np.ndarray, t: float, start: float, end: float
     commit(frame, img)
 
 
+def render_capability_transition(frame: np.ndarray, t: float) -> None:
+    a = int(255 * scene_alpha(t, 70, 74))
+    img, draw = pil_layer(frame)
+    text(draw, (WIDTH // 2, 315), "真实世界评估  /  REAL-WORLD EVALUATION", 30,
+         color=CYAN, bold=True, anchor="mm", alpha=a)
+    text(draw, (WIDTH // 2, 420), "Four Core Capabilities", 76, bold=True,
+         anchor="mm", alpha=a, latin=True)
+    text(draw, (WIDTH // 2, 505),
+         "Memory-grounded planning, reasoning, transfer & precise control", 30,
+         color=MUTED, anchor="mm", alpha=a, latin=True)
+    labels = [
+        ("01", "LONG-HORIZON", CYAN),
+        ("02", "VISUAL REASONING", ORANGE),
+        ("03", "SKILL TRANSFER", PURPLE),
+        ("04", "INSTRUCTION FOLLOWING", GREEN),
+    ]
+    for i, (number, label, accent) in enumerate(labels):
+        x = 145 + i * 420
+        pill(draw, (x, 650, x + 370, 725), f"{number}  {label}", accent, a)
+    commit(frame, img)
+
+
 def render_demo_long(frame: np.ndarray, t: float) -> None:
-    render_capability_demo(frame, t, 70, 79, "01",
+    render_capability_demo(frame, t, 74, 83, "01",
                            "Long-Horizon Robotic Manipulation", "长程自主规划", CYAN)
 
 
 def render_demo_memory(frame: np.ndarray, t: float) -> None:
-    render_capability_demo(frame, t, 79, 87, "02",
+    render_capability_demo(frame, t, 83, 91, "02",
                            "Memory-Dependent Visual Reasoning", "记忆依赖的视觉推理", ORANGE)
 
 
 def render_demo_cross(frame: np.ndarray, t: float) -> None:
-    render_capability_demo(frame, t, 87, 95, "03",
+    render_capability_demo(frame, t, 91, 99, "03",
                            "Cross-Embodiment Skill Transfer", "跨形态技能迁移", PURPLE)
 
 
 def render_demo_fine(frame: np.ndarray, t: float) -> None:
-    render_capability_demo(frame, t, 95, 104, "04",
+    render_capability_demo(frame, t, 99, 108, "04",
                            "Fine-Grained Instruction Following", "细粒度指令跟随", GREEN)
 
 
+def render_inference_transition(frame: np.ndarray, t: float) -> None:
+    a = int(255 * scene_alpha(t, 108, 112))
+    img, draw = pil_layer(frame)
+    text(draw, (WIDTH // 2, 300), "推理模式  /  INFERENCE MODES", 30,
+         color=CYAN, bold=True, anchor="mm", alpha=a)
+    text(draw, (WIDTH // 2, 405), "From Global Intent to Precise Control", 69,
+         bold=True, anchor="mm", alpha=a, latin=True)
+    panel(draw, (280, 600, 890, 790), a, CYAN)
+    panel(draw, (1030, 600, 1640, 790), a, PURPLE)
+    text(draw, (585, 660), "AUTONOMOUS", 25, color=CYAN, bold=True,
+         anchor="mm", alpha=a, latin=True)
+    text(draw, (585, 730), "Global instruction & memory", 28,
+         anchor="mm", alpha=a, latin=True)
+    text(draw, (1335, 660), "INTERACTIVE", 25, color=PURPLE, bold=True,
+         anchor="mm", alpha=a, latin=True)
+    text(draw, (1335, 730), "Fine-grained language control", 28,
+         anchor="mm", alpha=a, latin=True)
+    commit(frame, img)
+
+
+def render_inference_modes(frame: np.ndarray, t: float) -> None:
+    a = int(255 * scene_alpha(t, 112, 124))
+    img, draw = pil_layer(frame)
+    text(draw, (WIDTH // 2, 135), "Two Complementary Inference Modes", 52,
+         bold=True, anchor="mm", alpha=a, latin=True)
+    text(draw, (WIDTH // 2, 190), "自主规划与交互控制", 27, color=CYAN,
+         bold=True, anchor="mm", alpha=a)
+    panel(draw, (85, 235, 925, 1005), a, CYAN)
+    panel(draw, (995, 235, 1835, 1005), a, PURPLE)
+    text(draw, (505, 835), "Autonomous Inference Mode", 29, color=CYAN,
+         bold=True, anchor="mm", alpha=a, latin=True)
+    text(draw, (505, 915), "Memory infers active subgoals\nfrom one global instruction.", 23,
+         color=MUTED, anchor="mm", alpha=a, latin=True, spacing=8)
+    text(draw, (1415, 835), "Interactive Inference Mode", 29, color=PURPLE,
+         bold=True, anchor="mm", alpha=a, latin=True)
+    text(draw, (1415, 915), "Fine-grained language directly\nsteers precise execution.", 23,
+         color=MUTED, anchor="mm", alpha=a, latin=True, spacing=8)
+    commit(frame, img)
+
+
 def render_outro(frame: np.ndarray, t: float) -> None:
-    a = int(255 * scene_alpha(t, 104, 110))
+    a = int(255 * scene_alpha(t, 124, 130))
     img, draw = pil_layer(frame)
     text(draw, (WIDTH // 2, 280), "WorldScape Policy 2.0", 91, bold=True,
          anchor="mm", alpha=a, latin=True)
@@ -435,11 +497,14 @@ def render_silent_video(path: Path) -> None:
         (47, 55, render_multimodal),
         (55, 63, render_training),
         (63, 70, render_dataset),
-        (70, 79, render_demo_long),
-        (79, 87, render_demo_memory),
-        (87, 95, render_demo_cross),
-        (95, 104, render_demo_fine),
-        (104, 110, render_outro),
+        (70, 74, render_capability_transition),
+        (74, 83, render_demo_long),
+        (83, 91, render_demo_memory),
+        (91, 99, render_demo_cross),
+        (99, 108, render_demo_fine),
+        (108, 112, render_inference_transition),
+        (112, 124, render_inference_modes),
+        (124, 130, render_outro),
     ]
     for index in range(DURATION * FPS):
         t = index / FPS
@@ -518,7 +583,7 @@ def generate_music(path: Path) -> None:
         arp = np.sin(2 * np.pi * note * arp_t) + 0.14 * np.sin(4 * np.pi * note * arp_t)
         audio[arp_section] += 0.012 * arp_env * arp
 
-    for marker in (13, 22, 34, 47, 55, 63, 70, 79, 87, 95, 104):
+    for marker in (13, 22, 34, 47, 55, 63, 70, 74, 83, 91, 99, 108, 112, 124):
         section, local_t = span(marker - 1.0, 1.6)
         rise_env = np.sin(np.pi * np.clip(local_t / 1.6, 0, 1)) ** 2
         phase = 2 * np.pi * (150 * local_t + 190 * local_t * local_t)
@@ -540,23 +605,33 @@ def compose(intermediate: Path, music: Path, output: Path) -> None:
     memory_reasoning = VIDEO_DIR / "memory-dependent-visual-reasoning.mp4"
     cross_embodiment = VIDEO_DIR / "cross-embodiment-skill-transfer.mp4"
     fine_grained = VIDEO_DIR / "fine-grained-instruction-following.mp4"
+    autonomous_mode = VIDEO_DIR / "demo-memory.mp4"
+    interactive_mode = VIDEO_DIR / "demo-prompt.mp4"
     filters = (
         "[1:v]trim=duration=9,setpts=PTS-STARTPTS,scale=1380:776,setsar=1,"
         "format=yuva420p,fade=t=in:st=0:d=0.4:alpha=1,fade=t=out:st=8.4:d=0.6:alpha=1,"
-        "setpts=PTS+70/TB[demo1];"
+        "setpts=PTS+74/TB[demo1];"
         "[2:v]trim=duration=8,setpts=PTS-STARTPTS,scale=1380:776,setsar=1,"
         "format=yuva420p,fade=t=in:st=0:d=0.4:alpha=1,fade=t=out:st=7.4:d=0.6:alpha=1,"
-        "setpts=PTS+79/TB[demo2];"
+        "setpts=PTS+83/TB[demo2];"
         "[3:v]trim=duration=8,setpts=PTS-STARTPTS,scale=1380:776,setsar=1,"
         "format=yuva420p,fade=t=in:st=0:d=0.4:alpha=1,fade=t=out:st=7.4:d=0.6:alpha=1,"
-        "setpts=PTS+87/TB[demo3];"
+        "setpts=PTS+91/TB[demo3];"
         "[4:v]trim=duration=9,setpts=PTS-STARTPTS,scale=1380:776,setsar=1,"
         "format=yuva420p,fade=t=in:st=0:d=0.4:alpha=1,fade=t=out:st=8.4:d=0.6:alpha=1,"
-        "setpts=PTS+95/TB[demo4];"
-        "[0:v][demo1]overlay=270:225:enable='between(t,70,79)'[v1];"
-        "[v1][demo2]overlay=270:225:enable='between(t,79,87)'[v2];"
-        "[v2][demo3]overlay=270:225:enable='between(t,87,95)'[v3];"
-        "[v3][demo4]overlay=270:225:enable='between(t,95,104)'[vout]"
+        "setpts=PTS+99/TB[demo4];"
+        "[5:v]trim=duration=12,setpts=PTS-STARTPTS,scale=700:560,setsar=1,"
+        "format=yuva420p,fade=t=in:st=0:d=0.4:alpha=1,fade=t=out:st=11.4:d=0.6:alpha=1,"
+        "setpts=PTS+112/TB[auto];"
+        "[6:v]trim=duration=12,setpts=PTS-STARTPTS,scale=700:560,setsar=1,"
+        "format=yuva420p,fade=t=in:st=0:d=0.4:alpha=1,fade=t=out:st=11.4:d=0.6:alpha=1,"
+        "setpts=PTS+112/TB[interactive];"
+        "[0:v][demo1]overlay=270:225:enable='between(t,74,83)'[v1];"
+        "[v1][demo2]overlay=270:225:enable='between(t,83,91)'[v2];"
+        "[v2][demo3]overlay=270:225:enable='between(t,91,99)'[v3];"
+        "[v3][demo4]overlay=270:225:enable='between(t,99,108)'[v4];"
+        "[v4][auto]overlay=155:255:enable='between(t,112,124)'[v5];"
+        "[v5][interactive]overlay=1065:255:enable='between(t,112,124)'[vout]"
     )
     subprocess.run([
         "ffmpeg", "-y", "-v", "warning",
@@ -565,9 +640,11 @@ def compose(intermediate: Path, music: Path, output: Path) -> None:
         "-stream_loop", "-1", "-i", str(memory_reasoning),
         "-stream_loop", "-1", "-i", str(cross_embodiment),
         "-stream_loop", "-1", "-i", str(fine_grained),
+        "-stream_loop", "-1", "-i", str(autonomous_mode),
+        "-stream_loop", "-1", "-i", str(interactive_mode),
         "-i", str(music),
         "-filter_complex", filters,
-        "-map", "[vout]", "-map", "5:a:0",
+        "-map", "[vout]", "-map", "7:a:0",
         "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-pix_fmt", "yuv420p",
         "-af", "loudnorm=I=-20:LRA=7:TP=-1.5",
         "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
