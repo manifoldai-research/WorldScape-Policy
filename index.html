@@ -15,7 +15,7 @@
     />
     <meta property="og:type" content="website" />
     <link rel="icon" href="assets/figures/logo.jpg" />
-    <link rel="stylesheet" href="styles.css?v=20260718-0117" />
+    <link rel="stylesheet" href="styles.css?v=20260720-1748" />
   </head>
   <body>
     <header class="site-header">
@@ -294,7 +294,7 @@
         </div>
         <div class="showcase-scroll" aria-label="Scrollable showcase videos">
           <article class="showcase-item">
-            <video controls autoplay muted loop playsinline preload="metadata" poster="assets/videos/long-horizon-robotic-manipulation-poster.jpg">
+            <video controls autoplay muted loop playsinline preload="auto" poster="assets/videos/long-horizon-robotic-manipulation-poster.jpg">
               <source src="assets/videos/long-horizon-robotic-manipulation.mp4" type="video/mp4" />
             </video>
             <div>
@@ -303,7 +303,7 @@
             </div>
           </article>
           <article class="showcase-item">
-            <video controls autoplay muted loop playsinline preload="metadata" poster="assets/videos/memory-dependent-visual-reasoning-poster.jpg">
+            <video controls autoplay muted loop playsinline preload="auto" poster="assets/videos/memory-dependent-visual-reasoning-poster.jpg">
               <source src="assets/videos/memory-dependent-visual-reasoning.mp4" type="video/mp4" />
             </video>
             <div>
@@ -312,7 +312,7 @@
             </div>
           </article>
           <article class="showcase-item">
-            <video controls autoplay muted loop playsinline preload="metadata" poster="assets/videos/cross-embodiment-skill-transfer-poster.jpg">
+            <video controls autoplay muted loop playsinline preload="auto" poster="assets/videos/cross-embodiment-skill-transfer-poster.jpg">
               <source src="assets/videos/cross-embodiment-skill-transfer.mp4" type="video/mp4" />
             </video>
             <div>
@@ -321,7 +321,7 @@
             </div>
           </article>
           <article class="showcase-item">
-            <video controls autoplay muted loop playsinline preload="metadata" poster="assets/videos/fine-grained-instruction-following-poster.jpg">
+            <video controls autoplay muted loop playsinline preload="auto" poster="assets/videos/fine-grained-instruction-following-poster.jpg">
               <source src="assets/videos/fine-grained-instruction-following.mp4" type="video/mp4" />
             </video>
             <div>
@@ -353,7 +353,7 @@
                   <tr><td>Fast-WAM</td><td>91.9%</td><td>91.8%</td><td>91.9%</td></tr>
                   <tr><td>Motus</td><td>88.7%</td><td>87.0%</td><td>87.9%</td></tr>
                   <tr><td>LingBot-VA</td><td>92.9%</td><td>91.6%</td><td>92.3%</td></tr>
-                  <tr class="ours"><td>WorldScape Policy 2.0</td><td>—</td><td>—</td><td>—</td></tr>
+                  <tr class="ours"><td>WorldScape Policy 2.0</td><td>94.3%</td><td>94.2%</td><td>94.3%</td></tr>
                 </tbody>
               </table>
             </div>
@@ -364,11 +364,11 @@
               <table>
                 <thead><tr><th>Capability</th><th>Task</th><th>&pi;<sub>0.5</sub></th><th>DreamZero</th><th>Ours</th></tr></thead>
                 <tbody>
-                  <tr><td rowspan="2">Autonomous Planning</td><td>Folding Clothes</td><td>—</td><td>—</td><td>—</td></tr>
-                  <tr><td>Folding Box</td><td>—</td><td>—</td><td>—</td></tr>
-                  <tr><td>Memory Reasoning</td><td>Shell Game</td><td>—</td><td>—</td><td>—</td></tr>
-                  <tr><td>Skill Transfer</td><td>Stacking Blocks</td><td>—</td><td>—</td><td>—</td></tr>
-                  <tr><td>Instruction Following</td><td>Clean Table</td><td>—</td><td>—</td><td>—</td></tr>
+                  <tr><td rowspan="2">Autonomous Planning</td><td>Folding Clothes</td><td>60%</td><td>45%</td><td>75%</td></tr>
+                  <tr><td>Folding Box</td><td>65%</td><td>55%</td><td>75%</td></tr>
+                  <tr><td>Memory Reasoning</td><td>Shell Game</td><td>30%</td><td>50%</td><td>75%</td></tr>
+                  <tr><td>Skill Transfer</td><td>Stacking Blocks</td><td>20%</td><td>20%</td><td>70%</td></tr>
+                  <tr><td>Instruction Following</td><td>Clean Table</td><td>70%</td><td>60%</td><td>80%</td></tr>
                 </tbody>
               </table>
             </div>
@@ -376,7 +376,18 @@
         </div>
         <div class="real-demo-grid">
           <article class="video-card">
-            <img src="assets/videos/demo-memory.gif" alt="Autonomous inference mode demo" />
+            <video
+              controls
+              autoplay
+              muted
+              loop
+              playsinline
+              preload="auto"
+              poster="assets/videos/demo-memory-first-frame.jpg?v=20260720-1404"
+              aria-label="Autonomous inference mode demo"
+            >
+              <source src="assets/videos/demo-memory.mp4?v=20260720-1404" type="video/mp4" />
+            </video>
             <div class="episode-task">
               <strong>Pick up the white container and pour water into the orange cup until it is full, then return the container to its original position.</strong>
             </div>
@@ -388,14 +399,15 @@
           <article class="video-card">
             <video
               data-prompt-video
+              controls
               autoplay
               muted
               loop
               playsinline
               preload="auto"
-              poster="assets/figures/realworld2.png"
+              poster="assets/videos/demo-prompt-first-frame.jpg?v=20260720-1359"
             >
-              <source src="assets/videos/demo-prompt.mp4" type="video/mp4" />
+              <source src="assets/videos/demo-prompt.mp4?v=20260720-1403" type="video/mp4" />
             </video>
             <div class="prompt-carousel" aria-label="Fine-grained language prompts">
               <div class="prompt-track">
@@ -449,7 +461,7 @@
       </span>
     </footer>
 
-    <script src="script.js?v=20260718-0240"></script>
+    <script src="script.js?v=20260720-1407"></script>
     <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
   </body>
 </html>

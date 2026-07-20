@@ -154,6 +154,12 @@ a {
   box-sizing: border-box;
 }
 
+@media (max-aspect-ratio: 4 / 5) {
+  .hero::before {
+    background-position: 68% center;
+  }
+}
+
 .eyebrow {
   margin: 0 0 14px;
   color: var(--teal);

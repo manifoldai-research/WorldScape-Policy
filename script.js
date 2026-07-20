@@ -123,12 +123,45 @@ if (promptVideo instanceof HTMLVideoElement) {
   });
   promptVideo.addEventListener("pause", () => window.cancelAnimationFrame(animationFrame));
   promptVideo.addEventListener("loadedmetadata", updatePrompt);
+  promptVideo.addEventListener("click", () => {
+    if (promptVideo.paused) {
+      promptVideo.play().catch(() => {});
+    } else {
+      promptVideo.pause();
+    }
+  });
   promptVideo.play().catch(() => updatePrompt());
 }
 
-document.querySelectorAll(".showcase-item video").forEach((video) => {
+const showcaseVideos = document.querySelectorAll(".showcase-item video");
+
+const playShowcaseVideo = (video) => {
+  video.muted = true;
+  video.defaultMuted = true;
+  video.setAttribute("muted", "");
   video.play().catch(() => {});
+};
+
+showcaseVideos.forEach((video) => {
+  playShowcaseVideo(video);
+  video.addEventListener("loadeddata", () => playShowcaseVideo(video));
+  video.addEventListener("canplay", () => playShowcaseVideo(video), { once: true });
 });
+
+if ("IntersectionObserver" in window) {
+  const showcaseVideoObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting && entry.target instanceof HTMLVideoElement) {
+          playShowcaseVideo(entry.target);
+        }
+      });
+    },
+    { threshold: 0.25 },
+  );
+
+  showcaseVideos.forEach((video) => showcaseVideoObserver.observe(video));
+}
 
 const showcaseScroller = document.querySelector(".showcase-scroll");
 
