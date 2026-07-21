@@ -141,7 +141,7 @@ a {
   background:
     linear-gradient(180deg, rgba(12, 7, 27, 0.2) 0%, rgba(17, 8, 38, 0.16) 55%, rgba(12, 5, 28, 0.64) 100%),
     linear-gradient(90deg, rgba(13, 8, 29, 0.54) 0%, rgba(29, 13, 54, 0.2) 48%, rgba(10, 6, 23, 0.12) 100%),
-    url("assets/figures/worldscape-hero-robot-arm.png") center center / cover no-repeat;
+    url("assets/figures/worldscape-hero-robot-arm.webp") center center / cover no-repeat;
   transform: scale(1.015);
 }
 

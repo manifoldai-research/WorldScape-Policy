@@ -57,8 +57,55 @@ if ("IntersectionObserver" in window) {
   });
 }
 
+const activateVideo = (video) => {
+  if (!(video instanceof HTMLVideoElement) || video.dataset.activated === "true") return;
+
+  video.dataset.activated = "true";
+  video.preload = "auto";
+
+  if (video.hasAttribute("data-autoplay")) {
+    video.muted = true;
+    video.defaultMuted = true;
+    video.autoplay = true;
+    video.setAttribute("muted", "");
+    video.setAttribute("autoplay", "");
+
+    const startPlayback = () => video.play().catch(() => {});
+    video.addEventListener("canplay", startPlayback, { once: true });
+    video.load();
+
+    if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+      startPlayback();
+    }
+  } else {
+    video.load();
+  }
+};
+
+const lazyVideos = document.querySelectorAll("[data-lazy-video]");
+
+if ("IntersectionObserver" in window) {
+  const lazyVideoObserver = new IntersectionObserver(
+    (entries, observer) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting || !(entry.target instanceof HTMLVideoElement)) return;
+        activateVideo(entry.target);
+        observer.unobserve(entry.target);
+      });
+    },
+    { rootMargin: "50px 0px", threshold: 0.01 },
+  );
+
+  lazyVideos.forEach((video) => lazyVideoObserver.observe(video));
+} else {
+  lazyVideos.forEach(activateVideo);
+}
+
 document.querySelectorAll(".video-card video:not([data-prompt-video])").forEach((video) => {
-  video.addEventListener("mouseenter", () => video.play().catch(() => {}));
+  video.addEventListener("mouseenter", () => {
+    activateVideo(video);
+    video.play().catch(() => {});
+  });
   video.addEventListener("mouseleave", () => video.pause());
 });
 
@@ -111,9 +158,18 @@ if (promptVideo instanceof HTMLVideoElement) {
 
   cards.forEach((card, index) => {
     card.addEventListener("click", () => {
-      promptVideo.currentTime = starts[index];
-      promptVideo.play().catch(() => {});
-      updatePrompt();
+      activateVideo(promptVideo);
+      const seekAndPlay = () => {
+        promptVideo.currentTime = starts[index];
+        promptVideo.play().catch(() => {});
+        updatePrompt();
+      };
+
+      if (promptVideo.readyState >= HTMLMediaElement.HAVE_METADATA) {
+        seekAndPlay();
+      } else {
+        promptVideo.addEventListener("loadedmetadata", seekAndPlay, { once: true });
+      }
     });
   });
 
@@ -123,44 +179,6 @@ if (promptVideo instanceof HTMLVideoElement) {
   });
   promptVideo.addEventListener("pause", () => window.cancelAnimationFrame(animationFrame));
   promptVideo.addEventListener("loadedmetadata", updatePrompt);
-  promptVideo.addEventListener("click", () => {
-    if (promptVideo.paused) {
-      promptVideo.play().catch(() => {});
-    } else {
-      promptVideo.pause();
-    }
-  });
-  promptVideo.play().catch(() => updatePrompt());
-}
-
-const showcaseVideos = document.querySelectorAll(".showcase-item video");
-
-const playShowcaseVideo = (video) => {
-  video.muted = true;
-  video.defaultMuted = true;
-  video.setAttribute("muted", "");
-  video.play().catch(() => {});
-};
-
-showcaseVideos.forEach((video) => {
-  playShowcaseVideo(video);
-  video.addEventListener("loadeddata", () => playShowcaseVideo(video));
-  video.addEventListener("canplay", () => playShowcaseVideo(video), { once: true });
-});
-
-if ("IntersectionObserver" in window) {
-  const showcaseVideoObserver = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting && entry.target instanceof HTMLVideoElement) {
-          playShowcaseVideo(entry.target);
-        }
-      });
-    },
-    { threshold: 0.25 },
-  );
-
-  showcaseVideos.forEach((video) => showcaseVideoObserver.observe(video));
 }
 
 const showcaseScroller = document.querySelector(".showcase-scroll");

@@ -15,7 +15,8 @@
     />
     <meta property="og:type" content="website" />
     <link rel="icon" href="assets/figures/logo.jpg" />
-    <link rel="stylesheet" href="styles.css?v=20260720-1748" />
+    <link rel="preload" href="assets/figures/worldscape-hero-robot-arm.webp" as="image" type="image/webp" fetchpriority="high" />
+    <link rel="stylesheet" href="styles.css?v=20260721-1143" />
   </head>
   <body>
     <header class="site-header">
@@ -68,16 +69,17 @@
       <section class="section video-feature" aria-label="WorldScape Policy teaser video">
         <div class="hero-media">
           <video
-            autoplay
+            data-lazy-video
+            data-autoplay
             controls
             muted
             loop
             playsinline
-            preload="auto"
+            preload="none"
             poster="assets/videos/worldscape-policy-method-intro-poster.jpg"
             aria-label="WorldScape Policy 2.0 method introduction"
           >
-            <source src="assets/videos/worldscape-policy-method-intro.mp4?v=20260718-0237" type="video/mp4" />
+            <source src="assets/videos/worldscape-policy-method-intro.mp4?v=20260721-1241" type="video/mp4" />
           </video>
           <div class="media-label">WORLD · ACTION · MEMORY</div>
           <div class="media-caption">
@@ -186,7 +188,7 @@
           <p class="eyebrow">Overview</p>
         </div>
         <figure class="figure-panel">
-          <img src="assets/figures/framework-hd.png" alt="WorldScape Policy 2.0 framework diagram" />
+          <img src="assets/figures/framework-hd.png" alt="WorldScape Policy 2.0 framework diagram" loading="lazy" decoding="async" />
           <figcaption>
             <strong>Figure 1: WorldScape Policy 2.0 Framework Overview.</strong> Built on
             ManipEvent-5M, the model encodes text, goal-image, and video prompts into a unified
@@ -215,14 +217,14 @@
         </div>
         <div class="method-grid">
           <figure class="figure-card">
-            <img src="assets/figures/overview-hd.png" alt="Comparison of different WAM paradigms" />
+            <img src="assets/figures/overview-hd.png" alt="Comparison of different WAM paradigms" loading="lazy" decoding="async" />
             <figcaption>
               <strong>Figure 2: WAM Paradigm Comparison.</strong> WorldScape Policy 2.0 moves
               from static or sliding-window context to reasoning-augmented multimodal memory.
             </figcaption>
           </figure>
           <figure class="figure-card">
-            <img src="assets/figures/lstm-hd.png?v=20260718-0808" alt="Reasoning augmented long short-term memory diagram" />
+            <img src="assets/figures/lstm-hd.png?v=20260718-0808" alt="Reasoning augmented long short-term memory diagram" loading="lazy" decoding="async" />
             <figcaption>
               <strong>Figure 3: Reasoning-Augmented Memory.</strong> Global-history, local-active,
               and event-boundary latents are retrieved and gated into current planning tokens.
@@ -263,7 +265,7 @@
           </div>
         </div>
         <figure class="figure-card flush">
-          <img src="assets/figures/pipeline-hd.png" alt="ManipEvent-5M construction pipeline" />
+          <img src="assets/figures/pipeline-hd.png" alt="ManipEvent-5M construction pipeline" loading="lazy" decoding="async" />
           <figcaption>
             <strong>Figure 4: ManipEvent-5M Construction Pipeline.</strong> Heterogeneous
             manipulation sources are segmented, captioned, aligned with action labels, and
@@ -273,14 +275,14 @@
       </section>
       <section class="section dataset-visuals">
         <figure class="figure-card">
-          <img src="assets/figures/distribution2-hd.png" alt="ManipEvent-5M distribution statistics" />
+          <img src="assets/figures/distribution2-hd.png" alt="ManipEvent-5M distribution statistics" loading="lazy" decoding="async" />
           <figcaption>
             <strong>Figure 5: ManipEvent-5M Statistics.</strong> Dataset distributions across
             episode length, subtask count, atomic actions, and segment duration.
           </figcaption>
         </figure>
         <figure class="figure-card">
-          <img src="assets/figures/exmp2-hd.png" alt="Coffee making multimodal prompt example" />
+          <img src="assets/figures/exmp2-hd.png" alt="Coffee making multimodal prompt example" loading="lazy" decoding="async" />
           <figcaption>
             <strong>Figure 6: Multimodal Prompt Example.</strong> A long-horizon coffee task
             represented with global instruction, goal image, demonstration video, and event captions.
@@ -294,8 +296,8 @@
         </div>
         <div class="showcase-scroll" aria-label="Scrollable showcase videos">
           <article class="showcase-item">
-            <video controls autoplay muted loop playsinline preload="auto" poster="assets/videos/long-horizon-robotic-manipulation-poster.jpg">
-              <source src="assets/videos/long-horizon-robotic-manipulation.mp4" type="video/mp4" />
+            <video data-lazy-video data-autoplay controls muted loop playsinline preload="none" poster="assets/videos/long-horizon-robotic-manipulation-poster.jpg">
+              <source src="assets/videos/long-horizon-robotic-manipulation.mp4?v=20260721-1241" type="video/mp4" />
             </video>
             <div>
               <h3>Long-Horizon Robotic Manipulation</h3>
@@ -303,8 +305,8 @@
             </div>
           </article>
           <article class="showcase-item">
-            <video controls autoplay muted loop playsinline preload="auto" poster="assets/videos/memory-dependent-visual-reasoning-poster.jpg">
-              <source src="assets/videos/memory-dependent-visual-reasoning.mp4" type="video/mp4" />
+            <video data-lazy-video data-autoplay controls muted loop playsinline preload="none" poster="assets/videos/memory-dependent-visual-reasoning-poster.jpg">
+              <source src="assets/videos/memory-dependent-visual-reasoning.mp4?v=20260721-1241" type="video/mp4" />
             </video>
             <div>
               <h3>Memory-Dependent Visual Reasoning</h3>
@@ -312,8 +314,8 @@
             </div>
           </article>
           <article class="showcase-item">
-            <video controls autoplay muted loop playsinline preload="auto" poster="assets/videos/cross-embodiment-skill-transfer-poster.jpg">
-              <source src="assets/videos/cross-embodiment-skill-transfer.mp4" type="video/mp4" />
+            <video data-lazy-video data-autoplay controls muted loop playsinline preload="none" poster="assets/videos/cross-embodiment-skill-transfer-poster.jpg">
+              <source src="assets/videos/cross-embodiment-skill-transfer.mp4?v=20260721-1241" type="video/mp4" />
             </video>
             <div>
               <h3>Cross-Embodiment Skill Transfer</h3>
@@ -321,8 +323,8 @@
             </div>
           </article>
           <article class="showcase-item">
-            <video controls autoplay muted loop playsinline preload="auto" poster="assets/videos/fine-grained-instruction-following-poster.jpg">
-              <source src="assets/videos/fine-grained-instruction-following.mp4" type="video/mp4" />
+            <video data-lazy-video data-autoplay controls muted loop playsinline preload="none" poster="assets/videos/fine-grained-instruction-following-poster.jpg">
+              <source src="assets/videos/fine-grained-instruction-following.mp4?v=20260721-1241" type="video/mp4" />
             </video>
             <div>
               <h3>Fine-Grained Instruction Following</h3>
@@ -377,16 +379,17 @@
         <div class="real-demo-grid">
           <article class="video-card">
             <video
+              data-lazy-video
+              data-autoplay
               controls
-              autoplay
               muted
               loop
               playsinline
-              preload="auto"
+              preload="none"
               poster="assets/videos/demo-memory-first-frame.jpg?v=20260720-1404"
               aria-label="Autonomous inference mode demo"
             >
-              <source src="assets/videos/demo-memory.mp4?v=20260720-1404" type="video/mp4" />
+              <source src="assets/videos/demo-memory.mp4?v=20260721-1241" type="video/mp4" />
             </video>
             <div class="episode-task">
               <strong>Pick up the white container and pour water into the orange cup until it is full, then return the container to its original position.</strong>
@@ -399,15 +402,16 @@
           <article class="video-card">
             <video
               data-prompt-video
+              data-lazy-video
+              data-autoplay
               controls
-              autoplay
               muted
               loop
               playsinline
-              preload="auto"
+              preload="none"
               poster="assets/videos/demo-prompt-first-frame.jpg?v=20260720-1359"
             >
-              <source src="assets/videos/demo-prompt.mp4?v=20260720-1403" type="video/mp4" />
+              <source src="assets/videos/demo-prompt.mp4?v=20260721-1241" type="video/mp4" />
             </video>
             <div class="prompt-carousel" aria-label="Fine-grained language prompts">
               <div class="prompt-track">
@@ -461,7 +465,7 @@
       </span>
     </footer>
 
-    <script src="script.js?v=20260720-1407"></script>
+    <script src="script.js?v=20260721-1225"></script>
     <script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
   </body>
 </html>
