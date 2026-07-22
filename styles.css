@@ -316,6 +316,29 @@ mark {
   flex: 0 0 auto;
 }
 
+.arxiv-logo {
+  display: inline-grid;
+  min-width: 30px;
+  height: 18px;
+  padding-inline: 3px;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 3px;
+  background: #fff;
+  color: #6c2ec3;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.hf-logo {
+  flex: 0 0 auto;
+  font-size: 1.08rem;
+  line-height: 1;
+}
+
 .button.primary {
   border-color: transparent;
   background: linear-gradient(120deg, #5220aa, #8b4ed4);
