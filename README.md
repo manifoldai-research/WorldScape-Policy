@@ -83,11 +83,12 @@ conversion commands, output layouts, and validation steps.
 
 ## 📦 Download models
 
+All checkpoint paths below are relative to `manifoldai-research/worldscape-policy/`.
 
-| Model              | Use Case                   | Description                                                                                       | Download Size | Checkpoint Path                                                       |
-| ------------------ | -------------------------- | ------------------------------------------------------------------------------------------------- | ------------- | --------------------------------------------------------------------- |
-| WSP2-Pretrain      | Fine-Tuning / Mid-Training | Cross-embodiment pretrained checkpoint used to initialize downstream post-training / mid-training | 25.8 GB       | `manifoldai-research/worldscape-policy/wsp_2_pretrain`                |
-| WSP2-RoboTwin2-C2R | Inference                  | Post-trained RoboTwin 2.0 checkpoint on clean-only dataset for benchmark evaluation               | 35.4 GB       | `manifoldai-research/worldscape-policy/wsp_2_posttrain_robotwin2_c2r` |
+| Model              | Use Case                   | Description                                                                                       | Download&nbsp;Size | Checkpoint Path                 |
+| ------------------ | -------------------------- | ------------------------------------------------------------------------------------------------- | ------------------ | ------------------------------- |
+| WSP2-Pretrain      | Fine-Tuning / Mid-Training | Cross-embodiment pretrained checkpoint used to initialize downstream post-training / mid-training | 25.8&nbsp;GB       | `wsp_2_pretrain`                |
+| WSP2-RoboTwin2-C2R | Inference                  | Post-trained RoboTwin 2.0 checkpoint on clean-only dataset for benchmark evaluation               | 35.4&nbsp;GB       | `wsp_2_posttrain_robotwin2_c2r` |
 
 
 Download the pre-trained checkpoint for fine-tuning:
