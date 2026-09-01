@@ -2,9 +2,10 @@
 
 WorldScape Policy 2.0 is a controllable World Action Model (WAM) that introduces multimodal controllability and reasoning-augmented memory, enabling interactive robotic manipulation through **Long-Horizon Autonomous Planning**, **Fine-Grained Instruction Following**, and **In-Context Learning** (Visual Reasoning or Skill Imitation). This repository provides a natively pretrained model checkpoint, pretraining and post-training recipes, evaluation tutorials, and real-robot deployment tools.
 
-![Project Page](https://img.shields.io/badge/Project-Page-6F35C7?logo=googlechrome&logoColor=white)
-![Paper](https://img.shields.io/badge/arXiv-2607.18840-b31b1b.svg)
-![Hugging Face](https://img.shields.io/badge/Hugging%20Face-WorldScape--Policy--2-FFD21E?logo=huggingface&logoColor=black)
+[![Project Page](https://img.shields.io/badge/Project-Page-6F35C7?logo=googlechrome&logoColor=white)](https://manifoldai-research.github.io/WorldScape-Policy/)
+[![Paper](https://img.shields.io/badge/arXiv-2607.18840-b31b1b.svg)](https://arxiv.org/abs/2607.18840)
+[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-WorldScape--Policy--2-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/manifoldai-research/WorldScape-Policy-2)
+
 
 ## 📢 News
 
