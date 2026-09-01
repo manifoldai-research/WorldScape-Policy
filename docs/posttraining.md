@@ -45,6 +45,27 @@ recursively composes model, conditioning, memory, and WAM-owned fragments.
 Platform YAMLs contain only selector defaults, dataset constraints, loader
 differences, evaluation linkage, and platform prompt/geometry details.
 
+## Text-instruction prompts
+
+In Auto mode, the VLM receives the high-level task instruction through
+`PLANNING_INSTRUCTION_TEMPLATE`. The template must contain either `{task}` or
+`{instruction}`; both placeholders are replaced with the sample's high-level
+instruction. The default format is:
+
+```text
+You are a robot planner. Instructions: {task}. Given the current high-level task instruction and current head-view observation, predict the next atomic action subtask for the next second.
+```
+
+For HDF5 text datasets, the high-level instruction is read from
+`high_level_instruction` or `language`. Combined strings of the form
+`task: <high-level task>, sub_task: <atomic subtask>, embodiment_tag: ...` are
+split automatically: Auto mode uses the high-level task for the VLM planning
+prompt, while Interactive mode uses the event/subtask instruction directly.
+
+Auto training with semantic forcing still requires both values. The task is
+rendered into the VLM planning prompt, while the subtask/event text provides the
+teacher semantic target and is not leaked into the Auto prompt.
+
 ## Auto VLM token flow
 
 The default Auto path uses Qwen's final hidden layer for perception and appends

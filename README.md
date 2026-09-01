@@ -2,17 +2,14 @@
 
 WorldScape Policy 2.0 is a controllable World Action Model (WAM) that introduces multimodal controllability and reasoning-augmented memory, enabling interactive robotic manipulation through **Long-Horizon Autonomous Planning**, **Fine-Grained Instruction Following**, and **In-Context Learning** (Visual Reasoning or Skill Imitation). This repository provides a natively pretrained model checkpoint, pretraining and post-training recipes, evaluation tutorials, and real-robot deployment tools.
 
-[![Project Page](https://img.shields.io/badge/Project-Page-6F35C7?logo=googlechrome&logoColor=white)](https://manifoldai-research.github.io/WorldScape-Policy/)
-[![Paper](https://img.shields.io/badge/arXiv-2607.18840-b31b1b.svg)](https://arxiv.org/abs/2607.18840)
-[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-WorldScape--Policy--2-FFD21E?logo=huggingface&logoColor=black)](https://huggingface.co/manifoldai-research/WorldScape-Policy-2)
-
+![Project Page](https://img.shields.io/badge/Project-Page-6F35C7?logo=googlechrome&logoColor=white)
+![Paper](https://img.shields.io/badge/arXiv-2607.18840-b31b1b.svg)
+![Hugging Face](https://img.shields.io/badge/Hugging%20Face-WorldScape--Policy--2-FFD21E?logo=huggingface&logoColor=black)
 
 ## 📢 News
 
-- **[2026-08-31]** 🚀 We released the pretrained and posttrained model checkpoints (e.g. RoboTwin2.0), pre-training and post-training recipes, and evaluation code for simulation benchmark and real-robot deployment.
+- **[2026-08-31]** 🚀 We released the pretrained and posttrained model checkpoints (e.g. RoboTwin2.0-C2R), pre-training and post-training recipes, and evaluation code for simulation benchmark and real-robot deployment.
 - **[2026-07-20]** 🌐 Our [project page](https://manifoldai-research.github.io/WorldScape-Policy/) is now available.
-
-
 
 ## 📖 Overview
 
@@ -28,8 +25,6 @@ WorldScape Policy 2.0 addresses this limitation by introducing multimodal contro
 - **Event-grounded pretraining:** Temporally localized events are aligned with language descriptions, visual prompts, video demonstrations, and action trajectories, providing fine-grained supervision beyond conventional episode-level annotations.
 - **Joint video-action modeling:** The WAM jointly predicts future three-view visual observations and robot actions under a diffusion-based training objective, grounding action generation in anticipated scene dynamics.
 - **Multi-embodiment transfer:** Cross-dataset pretraining preserves embodiment-specific action adapters within a shared model, while post-training selects and exports a single adapter specialized for the target robot.
-
-
 
 ## 🧠 Autonomous Planning and Instruction Following
 
@@ -74,9 +69,28 @@ export CONDA_ENV="$CONDA_PREFIX"
 
 FlashAttention 2.8.3 is optional; PyTorch SDPA is the fallback. RoboTwin2 and the real-robot `manifold_msg` SDK must be installed from their upstream distributions when needed.
 
+## 📊 Data Preparation
+
+WorldScape Policy can train from raw HDF5 episodes or existing LeRobot v2 datasets. Before training, generate the native metadata required by the dataset adapters:
+
+- Raw HDF5: add native metadata without rewriting the episode files.
+- LeRobot v2: scan the existing Parquet/video data and add or refresh metadata.
+- Full conversion: optionally convert HDF5 episodes into LeRobot Parquet and
+MP4 files.
+
+See the [data preparation guide](tools/data/README.md) for expected schemas,
+conversion commands, output layouts, and validation steps.
+
 ## 📦 Download models
 
-Once model files are published, download the WorldScape pretraining checkpoint:
+
+| Model              | Use Case                   | Description                                                                                       | Download Size | Checkpoint Path                                                       |
+| ------------------ | -------------------------- | ------------------------------------------------------------------------------------------------- | ------------- | --------------------------------------------------------------------- |
+| WSP2-Pretrain      | Fine-Tuning / Mid-Training | Cross-embodiment pretrained checkpoint used to initialize downstream post-training / mid-training | 25.8 GB       | `manifoldai-research/worldscape-policy/wsp_2_pretrain`                |
+| WSP2-RoboTwin2-C2R | Inference                  | Post-trained RoboTwin 2.0 checkpoint on clean-only dataset for benchmark evaluation               | 35.4 GB       | `manifoldai-research/worldscape-policy/wsp_2_posttrain_robotwin2_c2r` |
+
+
+Download the pretraining checkpoint for fine-tuning:
 
 ```bash
 export WSP_MODEL_ROOT="$HOME/models/worldscape-policy"
@@ -87,6 +101,16 @@ hf download manifoldai-research/WorldScape-Policy-2 \
   --local-dir "$WSP_MODEL_ROOT"
 
 export PRETRAINED_MODEL_PATH="$WSP_MODEL_ROOT/wsp_2_pretrain"
+```
+
+Download the RoboTwin 2.0 checkpoint for inference:
+
+```bash
+hf download manifoldai-research/WorldScape-Policy-2 \
+  --include "wsp_2_posttrain_robotwin2_c2r/**" \
+  --local-dir "$WSP_MODEL_ROOT"
+
+export ROBOTWIN2_EVAL_MODEL_PATH="$WSP_MODEL_ROOT/wsp_2_posttrain_robotwin2_c2r"
 ```
 
 The launchers place missing public base components below `WSP_MODEL_ROOT` and download them automatically. Set `WSP_AUTO_DOWNLOAD=false` for offline jobs, or override paths explicitly:
@@ -106,7 +130,7 @@ Training loads checkpoints in this order:
 
 Every saved `checkpoint-N/` is both resumable and evaluable. Evaluation requires the complete native directory, including `model.safetensors.index.json` and all `model-00001-of-0000N.safetensors` shards (or an unsharded `model.safetensors`), `checkpoint_manifest.json`, `transform_bundle.json`, and `.complete`. New checkpoints use 5 GB Hugging Face shards by default; override this with `CHECKPOINT_MAX_SHARD_SIZE` (for example, `10GB`).
 
-## 🚀 Real-robot post-training
+## 🚀 Real-Robot Fine-Tuning on Your Own Data
 
 AgileX post-training consumes HDF5 episodes with synchronized head, left-wrist, and right-wrist images, EEF state/actions, and task/subtask metadata. Set the common inputs first:
 
@@ -117,9 +141,7 @@ export DATA_ROOT=/data/agilex-task
 export NUM_GPUS=8
 ```
 
-
-
-### 1. Text-instruction Conditioning
+### 1. Text-Instruction Conditioning
 
 Configuration:
 
@@ -128,13 +150,8 @@ Configuration:
 - `WSP_MODE=auto` for autonomous planning
 - `WSP_MODE=interactive` for direct instruction following
 
-In Auto mode, the VLM receives the high-level task instruction through `PLANNING_INSTRUCTION_TEMPLATE`. The template must contain either `{task}` or `{instruction}`; both placeholders are replaced with the sample's high-level instruction. The default format is:
-
-```text
-You are a robot planner. Instructions: {task}. Given the current high-level task instruction and current head-view observation, predict the next atomic action subtask for the next second.
-```
-
-For HDF5 text datasets, the high-level instruction is read from `high_level_instruction` or `language`. Combined strings of the form `task: <high-level task>, sub_task: <atomic subtask>, embodiment_tag: ...` are split automatically: Auto mode uses `<high-level task>` for the VLM planning prompt, while Interactive mode uses the event/subtask instruction directly. For Auto training with semantic forcing, each sample should still provide both the high-level task and the event/subtask instruction: the task is rendered into the VLM planning prompt, and the subtask/event text is used as the teacher semantic target instead of being leaked into the Auto prompt.
+See [Post-training: Text-instruction prompts](docs/posttraining.md#text-instruction-prompts)
+for prompt templates, source-field parsing, and semantic-target handling.
 
 ```bash
 # Autonomous planning
@@ -146,9 +163,7 @@ WSP_MODE=interactive RUN_NAME=fold-shirt-interactive \
   ./recipes/posttrain/posttrain_agilex_fold_shirt_text.sh
 ```
 
-
-
-### 2. Goal-image Conditioning
+### 2. Goal-Image Conditioning
 
 Configuration:
 
@@ -161,9 +176,7 @@ DATA_ROOT=/data/build-block-goal RUN_NAME=build-block-goal \
   ./recipes/posttrain/posttrain_agilex_build_block_goal.sh
 ```
 
-
-
-### 3. Demonstration-video Conditioning
+### 3. Demonstration-Video Conditioning
 
 Configuration for In-Context Adaptation:
 
@@ -183,7 +196,7 @@ DATA_ROOT=/data/shell-game-demo RUN_NAME=shell-game-demo \
 
 Use `CUDA_VISIBLE_DEVICES=0 NUM_GPUS=1` for single-GPU debugging. For multiple nodes, set `MLP_WORKER_NUM`, `MLP_ROLE_INDEX`, `MLP_WORKER_0_HOST`, `MLP_WORKER_0_PORT`, and the per-node `NUM_GPUS`.
 
-## 🤖 Real-robot Evaluation and Deployment
+## 🤖 Real-Robot Evaluation and Deployment
 
 Always test with read-only HDF5 replay before enabling robot actuation:
 
@@ -233,6 +246,7 @@ SHELL_GAME_DEMO_EVAL_MODEL_PATH=/path/to/checkpoint \
 ```
 
 
+
 ## 🪿 RoboTwin 2.0 Evaluation
 
 RoboTwin 2.0 evaluation follows the official evaluation interface and workflow. For convenience, a copy of the official RoboTwin repository is included under `third_party/RoboTwin`, with several local modifications applied to accelerate evaluation. Before running evaluation, follow the official instructions in `third_party/RoboTwin/README.md` to install the environment and download the required assets. The manager creates `third_party/RoboTwin/policy/wsp2_policy` automatically; an equivalent manual setup is:
@@ -275,10 +289,19 @@ See `experiments/robotwin/README.md` for single-task and manager examples. RoboT
 ## 📚 Documentation
 
 - [Architecture](docs/architecture.md)
+- [Data-preparation](tools/data/README.md)
 - [Post-training](docs/posttraining.md)
 - [Evaluation](docs/evaluation.md)
-- [Policy server](docs/server.md)
+- [Policy-server](docs/server.md)
 
+## 🙏 Acknowledgements
+
+- [Qwen3-VL](https://github.com/QwenLM/Qwen3-VL)
+- [DreamZero](https://github.com/dreamzero0/dreamzero)
+- [FastWAM](https://github.com/yuantianyuan01/FastWAM)
+- [Wan2.2](https://github.com/Wan-Video/Wan2.2)
+
+Please follow each upstream repository's license and model-use terms.
 
 ## 📝 Citation
 
@@ -289,15 +312,11 @@ See `experiments/robotwin/README.md` for single-task and manager examples. RoboT
   journal={arXiv preprint arXiv:2607.18840},
   year={2026}
 }
+
+@article{su2026worldscape_policy,
+  title={WorldScape Policy: Generalizable Robotic Learning via a Foundation World Model},
+  author={Su, Haisheng and Shang, Yu and Zhang, Xin and Dou, Haoxuan and Jin, Xin and Zhang, Hongling and Gao, Chen and Li, Yong and Wu, Wei},
+  year={2026}
+}
 ```
 
-
-
-## 🙏 Acknowledgements
-
-- [Qwen3-VL](https://github.com/QwenLM/Qwen3-VL)
-- [DreamZero](https://github.com/dreamzero0/dreamzero)
-- [FastWAM](https://github.com/yuantianyuan01/FastWAM)
-- [Wan2.2](https://github.com/Wan-Video/Wan2.2)
-
-Please follow each upstream repository's license and model-use terms.
