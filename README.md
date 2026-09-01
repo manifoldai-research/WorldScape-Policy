@@ -90,7 +90,7 @@ conversion commands, output layouts, and validation steps.
 | WSP2-RoboTwin2-C2R | Inference                  | Post-trained RoboTwin 2.0 checkpoint on clean-only dataset for benchmark evaluation               | 35.4 GB       | `manifoldai-research/worldscape-policy/wsp_2_posttrain_robotwin2_c2r` |
 
 
-Download the pretraining checkpoint for fine-tuning:
+Download the pre-trained checkpoint for fine-tuning:
 
 ```bash
 export WSP_MODEL_ROOT="$HOME/models/worldscape-policy"
