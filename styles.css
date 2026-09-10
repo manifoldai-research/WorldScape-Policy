@@ -148,6 +148,9 @@ a {
 .hero-copy {
   position: relative;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   width: 100%;
   max-width: 1120px;
   padding-inline: 28px;
@@ -244,13 +247,13 @@ h3 {
 
 .subtitle {
   margin: 44px auto 0;
-  max-width: min(1120px, calc(100vw - 72px));
+  max-width: min(980px, calc(100vw - 72px));
   color: #4e3a67;
   font-size: clamp(1.12rem, 1.95vw, 1.72rem);
   font-weight: 780;
   line-height: 1.2;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 mark {
