@@ -9,16 +9,16 @@ WorldScape Policy 2.0 is a controllable World Action Model (WAM) that introduces
 
 ## 📢 News
 
-- **`[2026-09-20]`** 🤖 WorldScape Policy is integrated into [XPolicyLab](https://github.com/XPolicyLab/XPolicyLab) , and achieved 🏆 **Rank 1** in the clean2clean track on the [RoboTwin 2.0](https://robodojo-benchmark.com/leaderboard#robotwin) leaderboard.
-- **`[2026-09-20]`** 🚀 We released the posttrained model checkpoint for `RoboTwin2.0-Full`.
-- **`[2026-08-31]`** 🚀 We released the pretrained and posttrained model checkpoints (e.g. `RoboTwin2.0-C2R`), pre-training and post-training recipes, and evaluation code for simulation benchmark and real-robot deployment.
-- **`[2026-07-20]**` 🌐 Our [project page](https://manifoldai-research.github.io/WorldScape-Policy/) is now available.
+- `[2026-09-20]` 🤖 WorldScape Policy is integrated into [XPolicyLab](https://github.com/XPolicyLab/XPolicyLab) , and achieved 🏆 **Rank 1** in the clean2clean track on the [RoboTwin 2.0](https://robodojo-benchmark.com/leaderboard#robotwin) leaderboard.
+- `[2026-09-20]` 🚀 We released the posttrained model checkpoint for `RoboTwin2.0-Full`.
+- `[2026-08-31]` 🚀 We released the pretrained and posttrained model checkpoints (e.g. `RoboTwin2.0-C2R`), pre-training and post-training recipes, and evaluation code for simulation benchmark and real-robot deployment.
+- **`[2026-07-20]`** 🌐 Our [project page](https://manifoldai-research.github.io/WorldScape-Policy/) is now available.
+
+
 
 ## 📖 Overview
 
 ![Comparison of different World Action Model memory paradigms](assets/overview.png)
-
-
 
 World Action Models jointly model future visual state transitions and robot actions, providing a natural interface for robot planning and controllable execution. However, existing WAMs are often limited by short temporal context and coarse episode-level language supervision. Besides, most existing WAMs rely primarily on text-only conditioning and lack support for video prompting. Consequently, they cannot readily acquire or imitate new behaviors from visual demonstrations provided at inference time, substantially limiting their capacity for example-driven in-context learning—analogous to how large language models learn from demonstrations in context.
 
@@ -32,6 +32,8 @@ WorldScape Policy 2.0 addresses this limitation by introducing multimodal contro
 - **Event-grounded pretraining:** Temporally localized events are aligned with language descriptions, visual prompts, video demonstrations, and action trajectories, providing fine-grained supervision beyond conventional episode-level annotations.
 - **Joint video-action modeling:** The WAM jointly predicts future three-view visual observations and robot actions under a diffusion-based training objective, grounding action generation in anticipated scene dynamics.
 - **Multi-embodiment transfer:** Cross-dataset pretraining preserves embodiment-specific action adapters within a shared model, while post-training selects and exports a single adapter specialized for the target robot.
+
+
 
 ## 🧠 Autonomous Planning and Instruction Following
 
@@ -93,11 +95,11 @@ conversion commands, output layouts, and validation steps.
 All checkpoint paths below are relative to `manifoldai-research/WorldScape-Policy-2/`.
 
 
-| Model              | Use Case                   | Description                                                                                       | Download Size | Checkpoint Path                                                                                                                             |
-| ------------------ | -------------------------- | ------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Model              | Use Case                   | Description                                                                                       | Download Size | Checkpoint Path                                                                                                                           |
+| ------------------ | -------------------------- | ------------------------------------------------------------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | WSP2-Pretrain      | Fine-Tuning / Mid-Training | Cross-embodiment pretrained checkpoint used to initialize downstream post-training / mid-training | 25.8 GB       | [wsp_2_pretrain](https://huggingface.co/manifoldai-research/WorldScape-Policy-2/tree/main/wsp_2_pretrain)                                 |
 | WSP2-RoboTwin2-C2R | Inference                  | Post-trained RoboTwin 2.0 checkpoint on clean-only dataset for benchmark evaluation               | 35.4 GB       | [wsp_2_posttrain_robotwin2_c2r](https://huggingface.co/manifoldai-research/WorldScape-Policy-2/tree/main/wsp_2_posttrain_robotwin2_c2r)   |
-| WSP-RoboTwin2-Full | Inference                  | Post-trained RoboTwin 2.0 checkpoint on the full clean-plus-randomized dataset for evaluation      | 35.4 GB       | [wsp_2_posttrain_robotwin2_full](https://huggingface.co/manifoldai-research/WorldScape-Policy-2/tree/main/wsp_2_posttrain_robotwin2_full) |
+| WSP-RoboTwin2-Full | Inference                  | Post-trained RoboTwin 2.0 checkpoint on the full clean-plus-randomized dataset for evaluation     | 35.4 GB       | [wsp_2_posttrain_robotwin2_full](https://huggingface.co/manifoldai-research/WorldScape-Policy-2/tree/main/wsp_2_posttrain_robotwin2_full) |
 
 
 Download the pre-trained checkpoint for fine-tuning:
@@ -151,6 +153,8 @@ export DATA_ROOT=/data/agilex-task
 export NUM_GPUS=8
 ```
 
+
+
 ### 1. Text-Instruction Conditioning
 
 Configuration:
@@ -173,6 +177,8 @@ WSP_MODE=interactive RUN_NAME=fold-shirt-interactive \
   ./recipes/posttrain/posttrain_agilex_fold_shirt_text.sh
 ```
 
+
+
 ### 2. Goal-Image Conditioning
 
 Configuration:
@@ -185,6 +191,8 @@ Configuration:
 DATA_ROOT=/data/build-block-goal RUN_NAME=build-block-goal \
   ./recipes/posttrain/posttrain_agilex_build_block_goal.sh
 ```
+
+
 
 ### 3. Demonstration-Video Conditioning
 
@@ -255,6 +263,8 @@ SHELL_GAME_DEMO_EVAL_MODEL_PATH=/path/to/checkpoint \
 ./recipes/eval/eval_agilex_shell_game_demo.sh
 ```
 
+
+
 ## 🪿 RoboTwin 2.0 Evaluation
 
 RoboTwin 2.0 evaluation follows the official evaluation interface and workflow. For convenience, a copy of the official RoboTwin repository is included under `third_party/RoboTwin`, with several local modifications applied to accelerate evaluation. Before running evaluation, follow the official instructions in `third_party/RoboTwin/README.md` to install the environment and download the required assets. The manager creates `third_party/RoboTwin/policy/wsp2_policy` automatically; an equivalent manual setup is:
@@ -301,6 +311,8 @@ See `experiments/robotwin/README.md` for single-task and manager examples. RoboT
 - [Post-training](docs/posttraining.md)
 - [Evaluation](docs/evaluation.md)
 - [Policy-server](docs/server.md)
+
+
 
 ## 🙏 Acknowledgements
 
