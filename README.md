@@ -9,9 +9,9 @@ WorldScape Policy 2.0 is a controllable World Action Model (WAM) that introduces
 
 ## 📢 News
 
-- `[2026-09-20]` 🤖 WorldScape Policy is integrated into [XPolicyLab](https://github.com/XPolicyLab/XPolicyLab) , and achieved 🏆 **Rank 1** in the clean2clean track on the [RoboTwin 2.0](https://robodojo-benchmark.com/leaderboard#robotwin) leaderboard.
-- `[2026-09-20]` 🚀 We released the posttrained model checkpoint for `RoboTwin2.0-Full`.
-- `[2026-08-31]` 🚀 We released the pretrained and posttrained model checkpoints (e.g. `RoboTwin2.0-C2R`), pre-training and post-training recipes, and evaluation code for simulation benchmark and real-robot deployment.
+- **`[2026-09-20]`** 🤖 WorldScape Policy is integrated into [XPolicyLab](https://github.com/XPolicyLab/XPolicyLab) , and achieved 🏆 **Rank 1** in the clean2clean track on the [RoboTwin 2.0](https://robodojo-benchmark.com/leaderboard#robotwin) leaderboard.
+- **`[2026-09-20]`** 🚀 We released the posttrained model checkpoint for `RoboTwin2.0-Full`.
+- **`[2026-08-31]`** 🚀 We released the pretrained and posttrained model checkpoints (e.g. `RoboTwin2.0-C2R`), pre-training and post-training recipes, and evaluation code for simulation benchmark and real-robot deployment.
 - **`[2026-07-20]`** 🌐 Our [project page](https://manifoldai-research.github.io/WorldScape-Policy/) is now available.
 
 
