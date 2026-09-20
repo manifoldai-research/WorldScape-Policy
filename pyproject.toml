@@ -7,6 +7,7 @@ name = "worldscape-policy"
 description = "WorldScape Policy: composable conditioning, memory, and world-action models"
 version="2.0.0a1"
 readme = "README.md"
+license = {file = "LICENSE"}
 classifiers = [
     "Intended Audience :: Science/Research",
     "Development Status :: 3 - Alpha",
