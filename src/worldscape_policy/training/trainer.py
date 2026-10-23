@@ -27,6 +27,10 @@ from worldscape_policy.checkpoint.weights_io import (
 )
 from worldscape_policy.checkpoint.loader import validate_native_checkpoint_artifacts
 from worldscape_policy.data import ConditionMode, TrainingBatch
+from worldscape_policy.data.video_preprocessing import (
+    preprocess_vlm_video,
+    validate_vlm_preprocessing,
+)
 from worldscape_policy.embodiment import expand_embodiment_ids
 from worldscape_policy.training.callbacks import CallbackList, TrainingCallback
 from worldscape_policy.training.objective import (
@@ -45,6 +49,7 @@ from worldscape_policy.types import (
     PromptBatch,
     WorldActionOutput,
 )
+from worldscape_policy.visual_mosaic import validate_diffusion_view_layout
 from worldscape_policy.wam.wan22 import Wan22TrainingInputs
 
 
@@ -145,8 +150,8 @@ class NativeWan22BatchAdapter:
     """Convert a homogeneous native batch without guessing model semantics.
 
     Images may be ``[B,T,H,W,C]``, ``[B,T,C,H,W]``, or their multi-view
-    variants. Diffusion targets may use the legacy three-view mosaic while
-    head-only consumers keep the selected raw view.
+    variants. Diffusion receives the original views. VLM head and history
+    frames optionally use their own deterministic preprocessing.
     """
 
     def __init__(
@@ -161,6 +166,7 @@ class NativeWan22BatchAdapter:
         action_dim: int | None = None,
         state_dim: int | None = None,
         diffusion_view_layout: str = "mosaic_2x2",
+        vlm_preprocessing: Mapping[str, Any] | None = None,
     ) -> None:
         self.video_latent_encoder = video_latent_encoder
         self.diffusion_video_preprocessor = diffusion_video_preprocessor
@@ -170,9 +176,10 @@ class NativeWan22BatchAdapter:
         self.channels_last = bool(channels_last)
         self.action_dim = action_dim
         self.state_dim = state_dim
-        if diffusion_view_layout != "mosaic_2x2":
-            raise ValueError("diffusion_view_layout must be 'mosaic_2x2'")
-        self.diffusion_view_layout = diffusion_view_layout
+        self.diffusion_view_layout = validate_diffusion_view_layout(
+            diffusion_view_layout
+        )
+        self.vlm_preprocessing = validate_vlm_preprocessing(vlm_preprocessing)
         if self.diffusion_video_preprocessor is None:
             raise ValueError("diffusion_video_preprocessor is required")
         preprocessor_owner = getattr(
@@ -180,15 +187,16 @@ class NativeWan22BatchAdapter:
             "__self__",
             None,
         )
-        codec_layout = getattr(
-            preprocessor_owner,
-            "diffusion_view_layout",
-            diffusion_view_layout,
+        codec_layout = validate_diffusion_view_layout(
+            getattr(
+                preprocessor_owner, "diffusion_view_layout", self.diffusion_view_layout
+            ),
+            path="visual codec diffusion_view_layout",
         )
-        if codec_layout != diffusion_view_layout:
+        if codec_layout != self.diffusion_view_layout:
             raise ValueError(
                 "batch adapter diffusion_view_layout does not match visual codec: "
-                f"{diffusion_view_layout!r} != {codec_layout!r}"
+                f"{self.diffusion_view_layout!r} != {codec_layout!r}"
             )
         for name, value in (("action_dim", action_dim), ("state_dim", state_dim)):
             if value is not None and value <= 0:
@@ -202,7 +210,7 @@ class NativeWan22BatchAdapter:
         images = self._images_to_policy_layout(batch.observations[self.image_key])
         if not 0 <= self.head_view_index < images.shape[2]:
             raise ValueError("head_view_index is outside the available views")
-        head_video = images[:, :, self.head_view_index]
+        head_video = images[:, :1, self.head_view_index]
         clean_video = self.diffusion_video_preprocessor(images)
         assert clean_video is not None
         history_images = (
@@ -210,6 +218,11 @@ class NativeWan22BatchAdapter:
             if batch.history_head_frames is not None
             else None
         )
+        head_video = preprocess_vlm_video(head_video, self.vlm_preprocessing)
+        if history_images is not None:
+            history_images = preprocess_vlm_video(
+                history_images, self.vlm_preprocessing
+            )
         try:
             embodiment_id = torch.tensor(
                 [self.embodiment_ids[name] for name in batch.embodiments],
@@ -293,7 +306,7 @@ class NativeWan22BatchAdapter:
             condition_ids=condition_ids,
             observation=ObservationBatch(
                 images=images,
-                head_view=head_video[:, :1],
+                head_view=head_video,
                 proprioception=proprioception,
                 embodiment_id=embodiment_id,
                 vlm_history_images=history_images,

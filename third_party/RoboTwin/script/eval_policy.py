@@ -88,6 +88,76 @@ def parse_bool(value):
     return bool(value)
 
 
+class EvalEnvironmentError(RuntimeError):
+    """A broken simulator/planner runtime cannot be recovered by another seed."""
+
+
+_FATAL_ENV_ERROR_MARKERS = (
+    "cuda kernel build failed",
+    "cuda error:",
+    "cuda runtime error",
+    "cuda out of memory",
+    "cuda driver version is insufficient",
+    "no cuda gpus are available",
+    "found no nvidia driver",
+    "torch not compiled with cuda enabled",
+    "no kernel image is available for execution",
+    "invalid device function",
+    "nvrtc compilation failed",
+    "has no attribute 'left_planner'",
+    "has no attribute 'right_planner'",
+)
+
+
+def _raise_if_fatal_env_error(exc, task_env=None):
+    # Check both links: wrappers may explicitly chain another error while the
+    # original CUDA failure remains in their exception context.
+    pending = [exc]
+    seen = set()
+    errors = []
+    fatal = False
+    while pending:
+        current = pending.pop()
+        if current is None or id(current) in seen:
+            continue
+        seen.add(id(current))
+        errors.append(f"{type(current).__name__}: {current}")
+        text = str(current).lower()
+        fatal |= any(marker in text for marker in _FATAL_ENV_ERROR_MARKERS)
+        if isinstance(current, AttributeError):
+            fatal |= getattr(current, "name", None) in {"left_planner", "right_planner"}
+        tb = current.__traceback__
+        while tb is not None:
+            code = tb.tb_frame.f_code
+            filename = code.co_filename.replace("\\", "/")
+            # Initialization errors are deterministic environment failures.
+            # Ordinary plan_path/plan_batch failures remain retryable.
+            fatal |= (
+                code.co_name == "set_planner"
+                and filename.endswith("/envs/robot/robot.py")
+            ) or (
+                code.co_name == "__init__"
+                and filename.endswith("/envs/robot/planner.py")
+            )
+            tb = tb.tb_next
+        pending.extend((current.__context__, current.__cause__))
+    if fatal:
+        if task_env is not None:
+            try:
+                task_env.close_env()
+            except Exception as cleanup_error:
+                print(
+                    "Warning: failed to close RoboTwin environment after fatal error: "
+                    f"{cleanup_error}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+        raise EvalEnvironmentError(
+            "RoboTwin environment failure; seed retries are aborted. "
+            "Error chain: " + " <- ".join(errors)
+        ) from exc
+
+
 def _result_suffix_from_task_config(task_config):
     if task_config == "demo_clean":
         return "clean"
@@ -279,12 +349,12 @@ def eval_policy(task_name,
 
     while succ_seed < test_num:
         if max_seed_trials is not None and seed_trials >= max_seed_trials:
-            print(
+            raise RuntimeError(
                 f"Reached `max_seed_trials`={max_seed_trials} before collecting "
-                f"{test_num} accepted seeds. accepted={succ_seed}, "
+                f"{test_num} accepted seeds. completed={TASK_ENV.test_num}, "
+                f"accepted={succ_seed}, "
                 f"current_seed={now_seed}."
             )
-            break
         seed_trials += 1
         render_freq = args["render_freq"]
         args["render_freq"] = 0
@@ -295,6 +365,7 @@ def eval_policy(task_name,
                 episode_info = TASK_ENV.play_once()
                 TASK_ENV.close_env()
             except UnStableError as e:
+                _raise_if_fatal_env_error(e, TASK_ENV)
                 # print(" -------------")
                 # print("Error: ", e)
                 # print(" -------------")
@@ -303,6 +374,9 @@ def eval_policy(task_name,
                 args["render_freq"] = render_freq
                 continue
             except Exception as e:
+                # Classify before cleanup, which may also fail after a partial
+                # setup and would otherwise hide the original runtime error.
+                _raise_if_fatal_env_error(e, TASK_ENV)
                 print(" -------------")
                 print("Error: ", e)
                 print("Stack Trace: ", traceback.format_exc())
@@ -326,6 +400,7 @@ def eval_policy(task_name,
         try:
             TASK_ENV.setup_demo(now_ep_num=now_id, seed=now_seed, is_test=True, **args)
         except UnStableError as e:
+            _raise_if_fatal_env_error(e, TASK_ENV)
             # This seed passed expert_check but failed during rollout env init.
             # Roll back the accepted-seed counter and skip to next seed.
             succ_seed -= 1
@@ -335,6 +410,7 @@ def eval_policy(task_name,
             now_seed += 1
             continue
         except Exception as e:
+            _raise_if_fatal_env_error(e, TASK_ENV)
             succ_seed -= 1
             if len(suc_test_seed_list) > 0 and suc_test_seed_list[-1] == now_seed:
                 suc_test_seed_list.pop()

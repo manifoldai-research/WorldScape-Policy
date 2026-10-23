@@ -48,4 +48,4 @@ export WAM_NUM_FRAMES="${WAM_NUM_FRAMES:-$((8 * WAM_MAX_CHUNK_SIZE + 1))}"
 
 # shellcheck source=recipes/common/launcher_common.sh
 source "$ROOT/recipes/common/launcher_common.sh"
-wsp_distributed_train_launch "$ROOT" "$ROOT/configs/posttrain/robotwin2.yaml" "$@"
+wsp_distributed_train_launch "$ROOT" "${WSP_POSTTRAIN_CONFIG:-$ROOT/configs/posttrain/robotwin2.yaml}" "$@"

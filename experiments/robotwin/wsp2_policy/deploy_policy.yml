@@ -14,10 +14,13 @@ mixed_precision: bf16
 device: cuda
 mode: auto
 action_type: qpos
-action_horizon: 24
-replan_steps: 24
+action_horizon: null
+replan_steps: null
 skip_get_obs_within_replan: true
-observation_interval: 3
+observation_interval: null
+vlm_history_stride: null
+diffusion_view_layout: null
+vlm_preprocessing: null
 vlm_history_num_frames: 4
 vlm_cot_prompt: "You are a robot planner. Instructions: {task}. Given the current high-level task instruction and current head-view observation, predict the next atomic action subtask for the next second."
 t5_prompt_template: "A video shows that a robot {instruction} The robot {instruction}"

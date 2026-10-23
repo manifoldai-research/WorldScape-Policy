@@ -11,8 +11,8 @@ model:
           parameters:
             model_type: ti2v
             patch_size: [1, 2, 2]
-            # 160x320 diffusion input -> 50 tokens/frame; RoboTwin's native
-            # 384x320 concatenation -> 120 tokens/frame.
+            # 160x320 diffusion input -> 50 tokens/frame;
+            # 384x320 mosaic_T -> 120 tokens/frame.
             frame_seqlen: ${oc.decode:${oc.env:WAM_FRAME_SEQLEN,50}}
             in_dim: 48
             dim: 3072

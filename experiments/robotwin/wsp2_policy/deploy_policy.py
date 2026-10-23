@@ -5,6 +5,7 @@ import json
 import sys
 import time
 from collections import deque
+from contextlib import nullcontext
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -18,7 +19,10 @@ for _path in (PROJECT_ROOT, PROJECT_ROOT / "src"):
         sys.path.insert(0, str(_path))
 
 from evals.robotwin2.adapter import RoboTwin2Adapter
-from evals.robotwin2.checkpoint import load_robotwin2_checkpoint_transform
+from evals.robotwin2.checkpoint import (
+    load_robotwin2_checkpoint_transform,
+    resolve_robotwin2_evaluation_config,
+)
 from worldscape_policy.native_builder import (
     build_wan22_policy_from_checkpoint,
     checkpoint_mode,
@@ -27,12 +31,9 @@ from worldscape_policy.native_builder import (
 from worldscape_policy.rollout.session import PolicyRuntime
 from worldscape_policy.types import InteractionMode, WorldActionOutput
 
-ACTION_HORIZON = 24
+DEFAULT_ACTION_HORIZON = 24
 JOINT_DIM = 14
-DEFAULT_OBSERVATION_INTERVAL = 3
-OBSERVATION_HISTORY_FRAMES = (
-    ACTION_HORIZON // DEFAULT_OBSERVATION_INTERVAL + 1
-)
+OBSERVATION_HISTORY_FRAMES = 9
 DEFAULT_VLM_COT_PROMPT = (
     "You are a robot planner. Instructions: {task}. Given the current high-level "
     "task instruction and current head-view observation, predict the next atomic "
@@ -55,6 +56,32 @@ def _parse_bool(value: Any) -> bool:
     return bool(value)
 
 
+def configure_inference_precision(
+    policy: torch.nn.Module,
+    mixed_precision: str,
+) -> torch.dtype | None:
+    """Cast mixed precision weights; native mode preserves component dtypes.
+
+    Native mode is required for components such as Qwen that load their own
+    BF16 weights and use FlashAttention with those native parameter dtypes.
+    """
+
+    precision = str(mixed_precision).strip().lower()
+    if precision in {"no", "none", "fp32", "float32"}:
+        return None
+    dtypes = {
+        "bf16": torch.bfloat16,
+        "bfloat16": torch.bfloat16,
+        "fp16": torch.float16,
+        "float16": torch.float16,
+    }
+    if precision not in dtypes:
+        raise ValueError("mixed_precision must be bf16, fp16, fp32, or no")
+    dtype = dtypes[precision]
+    policy.to(dtype=dtype)
+    return dtype
+
+
 class WSP2RoboTwinPolicy:
     """RoboTwin ``eval_policy.py`` bridge backed by one persistent WSP2 model."""
 
@@ -70,25 +97,15 @@ class WSP2RoboTwinPolicy:
                 f"checkpoint mode is {primary_mode.value!r}, "
                 f"not requested {self.mode.value!r}"
             )
-        action_horizon = int(usr_args.get("action_horizon", ACTION_HORIZON))
-        self.replan_steps = int(usr_args.get("replan_steps", ACTION_HORIZON))
-        if action_horizon != ACTION_HORIZON:
-            raise ValueError(
-                "WSP2 RoboTwin policy requires action_horizon=24"
-            )
-        if not 1 <= self.replan_steps <= ACTION_HORIZON:
-            raise ValueError("replan_steps must be between 1 and 24")
+        resolved = resolve_robotwin2_evaluation_config(checkpoint, usr_args)
+        self.action_horizon = resolved["action_horizon"]
+        self.replan_steps = resolved["replan_steps"]
+        self.observation_interval = resolved["observation_interval"]
+        self.vlm_history_stride = resolved["vlm_history_stride"]
+        self.diffusion_view_layout = resolved["diffusion_view_layout"]
+        self.vlm_preprocessing = resolved["vlm_preprocessing"]
         if str(usr_args.get("action_type", "qpos")) != "qpos":
             raise ValueError("WSP2 RoboTwin policy supports qpos actions only")
-        self.observation_interval = int(
-            usr_args.get("observation_interval", DEFAULT_OBSERVATION_INTERVAL)
-        )
-        if self.observation_interval != DEFAULT_OBSERVATION_INTERVAL:
-            raise ValueError("WSP2 RoboTwin policy requires observation_interval=3")
-        if self.replan_steps % self.observation_interval:
-            raise ValueError(
-                "replan_steps must be divisible by observation_interval"
-            )
         self.memory_reset_chunks = int(usr_args.get("memory_reset_chunks", 2))
         if self.memory_reset_chunks < 0:
             raise ValueError("memory_reset_chunks cannot be negative")
@@ -121,6 +138,8 @@ class WSP2RoboTwinPolicy:
         policy = build_wan22_policy_from_checkpoint(
             checkpoint,
             visual_input_range="zero_one",
+            diffusion_view_layout=self.diffusion_view_layout,
+            expected_action_horizon=self.action_horizon,
             device=self.device,
             expected_mode=self.mode,
             vlm_cot_prompt=self.vlm_cot_prompt,
@@ -128,6 +147,9 @@ class WSP2RoboTwinPolicy:
                 usr_args.get("validate_checkpoint_artifacts", False)
             ),
         )
+        policy.vlm_preprocessing = self.vlm_preprocessing
+        self.mixed_precision = str(usr_args.get("mixed_precision", "bf16"))
+        self.inference_dtype = configure_inference_precision(policy, self.mixed_precision)
         if self.mode is InteractionMode.AUTO:
             kernel = getattr(getattr(policy, "wam", None), "_numerical_kernel", None)
             kernel_config = getattr(kernel, "config", None)
@@ -138,6 +160,11 @@ class WSP2RoboTwinPolicy:
         self.adapter = RoboTwin2Adapter(
             checkpoint_transform=transform,
             vlm_history_num_frames=self.vlm_history_num_frames,
+            preserve_camera_resolution=self.diffusion_view_layout == "mosaic_T",
+            action_horizon=self.action_horizon,
+            observation_interval=self.observation_interval,
+            vlm_history_stride=self.vlm_history_stride,
+            vlm_preprocessing=self.vlm_preprocessing,
         )
         self.generator = torch.Generator(device=torch.device(self.device)).manual_seed(
             int(usr_args.get("seed", 0))
@@ -158,9 +185,14 @@ class WSP2RoboTwinPolicy:
                     "checkpoint": str(checkpoint),
                     "mode": self.mode.value,
                     "device": self.device,
-                    "action_horizon": ACTION_HORIZON,
+                    "action_horizon": self.action_horizon,
                     "replan_steps": self.replan_steps,
                     "memory_reset_chunks": self.memory_reset_chunks,
+                    "observation_interval": self.observation_interval,
+                    "vlm_history_stride": self.vlm_history_stride,
+                    "diffusion_view_layout": self.diffusion_view_layout,
+                    "vlm_preprocessing": self.vlm_preprocessing,
+                    "mixed_precision": self.mixed_precision,
                 },
                 sort_keys=True,
             )
@@ -215,9 +247,9 @@ class WSP2RoboTwinPolicy:
             self.chunk_frames,
         ):
             values = list(history)
-            padded = values + [values[-1]] * (
+            padded = [values[0]] * (
                 self.frames_per_replan - len(values)
-            )
+            ) + values
             cameras[name]["rgb"] = np.stack(padded, axis=0)
         return result
 
@@ -244,6 +276,7 @@ class WSP2RoboTwinPolicy:
         policy_observation = self.adapter.observation(
             native_observation,
             device=self.device,
+            observation_step=getattr(self, "episode_action_steps", 0),
         )
         instruction = str(task_env.get_instruction())
         if self.mode is InteractionMode.INTERACTIVE:
@@ -252,24 +285,34 @@ class WSP2RoboTwinPolicy:
             )
         prompts = self.adapter.prompt(instruction, mode=self.mode)
         started = time.perf_counter()
-        output = self.runtime.predict(
-            observation=policy_observation,
-            prompts=prompts,
-            generator=self.generator,
+        inference_dtype = getattr(self, "inference_dtype", None)
+        autocast = (
+            nullcontext()
+            if inference_dtype is None
+            else torch.autocast(
+                device_type=torch.device(self.device).type,
+                dtype=inference_dtype,
+            )
         )
+        with autocast:
+            output = self.runtime.predict(
+                observation=policy_observation,
+                prompts=prompts,
+                generator=self.generator,
+            )
         inference_s = time.perf_counter() - started
         actions = self.adapter.action(output)
-        if actions.shape != (ACTION_HORIZON, JOINT_DIM):
+        action_horizon = getattr(self, "action_horizon", DEFAULT_ACTION_HORIZON)
+        if actions.shape != (action_horizon, JOINT_DIM):
             self.runtime.discard()
             raise ValueError(
-                f"WSP2 policy produced {actions.shape}, expected (24, 14)"
+                f"WSP2 policy produced {actions.shape}, expected ({action_horizon}, 14)"
             )
         executed_actions = actions[: self.replan_steps]
         self.pending_output = output
         self.pending_actions.extend(executed_actions)
         self.executed_in_chunk = 0
-        # Keep a rolling, training-aligned nine-frame window. With a 12-step
-        # replan interval, adjacent windows overlap by five sampled frames.
+        # Keep nine chronological frames sampled every H/8 simulator steps.
         if self.chunk_frames is None:
             self.chunk_frames = tuple(
                 deque([frame.copy()], maxlen=self.frames_per_replan)
@@ -286,7 +329,7 @@ class WSP2RoboTwinPolicy:
         if self.pending_actions or self.pending_output is not None:
             raise RuntimeError("A policy step must start at an action-chunk boundary")
 
-        append_current = True
+        append_current = not self._latest_observation_buffered
         if observation is None:
             if self._latest_observation is None:
                 observation = task_env.get_obs()
@@ -307,6 +350,7 @@ class WSP2RoboTwinPolicy:
             task_env.take_action(action, action_type="qpos")
             self.simulation_seconds += time.perf_counter() - started
             self.executed_in_chunk += 1
+            self.episode_action_steps = getattr(self, "episode_action_steps", 0) + 1
 
             if self.executed_in_chunk % self.observation_interval == 0:
                 sampled = task_env.get_obs()
@@ -344,8 +388,6 @@ class WSP2RoboTwinPolicy:
             and self.memory_chunks_since_reset >= self.memory_reset_chunks
         ):
             self.runtime.reset(self.mode.value)
-            self.chunk_frames = None
-            self._latest_observation_buffered = False
             self.memory_chunks_since_reset = 0
 
     def reset(self) -> None:
@@ -363,6 +405,7 @@ class WSP2RoboTwinPolicy:
         self._latest_observation: dict[str, Any] | None = None
         self._latest_observation_buffered = False
         self.memory_chunks_since_reset = 0
+        self.episode_action_steps = 0
         self.inference_seconds = []
         self.simulation_seconds = 0.0
         self.episode_started = time.perf_counter()

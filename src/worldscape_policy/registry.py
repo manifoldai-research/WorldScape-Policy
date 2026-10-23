@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any
 
 from torch import nn
 
@@ -14,6 +14,7 @@ from worldscape_policy.memory.visual import VisualPrefillManager, WanVisualCodec
 from worldscape_policy.memory.visual.normalization import VisualInputRange
 from worldscape_policy.policy import WorldScapePolicy
 from worldscape_policy.types import InteractionMode
+from worldscape_policy.visual_mosaic import DiffusionViewLayout
 from worldscape_policy.wam.registry import DEFAULT_WAM_REGISTRY, WAMRegistry
 from worldscape_policy.wam.wan22 import (
     Wan22DistributedConfig,
@@ -31,13 +32,15 @@ class Wan22PolicyBuildConfig:
     persistent_prompt: str = "goal_or_demo"
     semantic_gate_only: bool = False
     semantic_grad_clip_norm: float = 0.5
+    auto_context_length: int | None = None
     max_history_steps: int = 16
     view_index: int = 0
     tiled: bool = False
     tile_size: tuple[int, int] = (34, 34)
     tile_stride: tuple[int, int] = (18, 16)
     visual_input_range: VisualInputRange = "zero_one"
-    diffusion_view_layout: Literal["mosaic_2x2"] = "mosaic_2x2"
+    diffusion_view_layout: DiffusionViewLayout = "mosaic_2x2"
+    vlm_preprocessing: dict[str, Any] | None = None
     distributed: Wan22DistributedConfig = field(
         default_factory=Wan22DistributedConfig
     )
@@ -94,6 +97,7 @@ def build_wan22_policy(
         visual_input_range=config.visual_input_range,
         semantic_gate_only=config.semantic_gate_only,
         semantic_grad_clip_norm=config.semantic_grad_clip_norm,
+        context_length=config.auto_context_length,
     )
     router = ConditionRouter(
         auto_conditioner=auto,
@@ -137,6 +141,7 @@ def build_wan22_policy(
         visual_memory=visual_memory,
         wam=wam,
         configured_mode=configured_mode,
+        vlm_preprocessing=config.vlm_preprocessing,
     )
 
 

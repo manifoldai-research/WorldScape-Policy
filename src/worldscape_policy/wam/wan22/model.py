@@ -1553,6 +1553,7 @@ class CausalWanModel(ModelMixin, ConfigMixin):
         self.out_dim = out_dim
         self.num_heads = num_heads
         self.num_layers = num_layers
+        self.max_chunk_size = int(max_chunk_size)
         self.local_attn_size = max_chunk_size * num_frame_per_block + 1 if max_chunk_size != -1 else -1
         self.qk_norm = qk_norm
         self.cross_attn_norm = cross_attn_norm

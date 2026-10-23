@@ -1,0 +1,30 @@
+includes:
+  - robotwin2.yaml
+
+selectors:
+  mode: auto
+
+model:
+  model_config:
+    model:
+      shape:
+        num_frames: 9
+        actions_per_block: 48
+      condition_router:
+        auto:
+          context_length: 512
+          vlm:
+            parameters:
+              planning_num_tokens: 8
+      wam:
+        core:
+          parameters:
+            max_chunk_size: 1
+
+data_loader:
+  dataset_kwargs:
+    max_chunk_size: 1
+    history_num_frames: 4
+    history_stride: 48
+    history_window: 192
+    single_high_level_instruction_per_episode: true

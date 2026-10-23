@@ -66,6 +66,8 @@ class SimulatorAdapter:
         action_transform: Callable[[np.ndarray], np.ndarray] | None = None,
         image_size: tuple[int, int] | None = None,
         image_resize_interpolation: str = "linear",
+        preserve_camera_resolution: bool = False,
+        head_video_transform: Callable[[torch.Tensor], torch.Tensor] | None = None,
     ) -> None:
         if not mapping.camera_keys:
             raise ValueError("At least one camera key is required")
@@ -82,6 +84,8 @@ class SimulatorAdapter:
         self.mapping = mapping
         self._action_transform = action_transform
         self._image_resize_interpolation = image_resize_interpolation
+        self._preserve_camera_resolution = bool(preserve_camera_resolution)
+        self._head_video_transform = head_video_transform
         self._image_size = (
             None
             if image_size is None
@@ -98,7 +102,7 @@ class SimulatorAdapter:
         videos = [
             _resize_camera_video(
                 _camera_video(_lookup(observation, key), key=key),
-                self._image_size,
+                None if self._preserve_camera_resolution else self._image_size,
                 interpolation=self._image_resize_interpolation,
             )
             for key in self.mapping.camera_keys
@@ -115,11 +119,18 @@ class SimulatorAdapter:
         image_array = np.stack(videos, axis=1)
 
         head_key = self.mapping.head_camera_key or self.mapping.camera_keys[0]
-        head = _resize_camera_video(
-            _camera_video(_lookup(observation, head_key), key=head_key),
-            self._image_size,
-            interpolation=self._image_resize_interpolation,
-        )[:1]
+        head = _camera_video(_lookup(observation, head_key), key=head_key)
+        if self._head_video_transform is None:
+            head = _resize_camera_video(
+                head,
+                self._image_size,
+                interpolation=self._image_resize_interpolation,
+            )
+        head_tensor = torch.from_numpy(head).permute(0, 3, 1, 2)
+        if self._head_video_transform is not None:
+            head_tensor = self._head_video_transform(head_tensor)
+        # Histories are chronological: Qwen's current temporal anchor is last.
+        current_head = head_tensor[-1:]
         state_values = [
             np.asarray(_lookup(observation, key), dtype=np.float32).reshape(-1)
             for key in self.mapping.state_keys
@@ -134,8 +145,7 @@ class SimulatorAdapter:
             .float()
             .div(255.0)
             .to(device),
-            head_view=torch.from_numpy(head)
-            .permute(0, 3, 1, 2)
+            head_view=current_head
             .unsqueeze(0)
             .float()
             .div(255.0)
@@ -148,6 +158,7 @@ class SimulatorAdapter:
             ),
         )
         batch.validate()
+        self._last_head_video = head_tensor.float().div(255.0)
         return batch
 
     def prompt(

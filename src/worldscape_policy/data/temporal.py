@@ -16,31 +16,41 @@ class TemporalPackingIndices:
     state: np.ndarray
     anchors: np.ndarray
 
-    def validate(self, max_chunk_size: int) -> None:
+    def validate(
+        self, max_chunk_size: int, *, action_steps_per_chunk: int = 24
+    ) -> None:
         chunks = len(self.anchors)
         if not 0 < chunks <= max_chunk_size:
             raise ValueError("temporal packing must contain at least one chunk")
         if self.video.shape != (chunks * 8 + 1,):
             raise ValueError("video indices must contain eight frames per chunk plus endpoint")
-        if self.action.shape != (chunks * 24,):
-            raise ValueError("action indices must contain 24 steps per chunk")
+        if self.action.shape != (chunks * action_steps_per_chunk,):
+            raise ValueError("action indices must contain the configured steps per chunk")
         if self.state.shape != (chunks,):
             raise ValueError("state indices must contain one anchor per chunk")
 
 
 @dataclass(frozen=True)
 class LanguageTemporalPacker:
-    """Reproduce legacy ±24 anchor expansion without depending on ``groot``."""
+    """Build language-consistent 24- or 48-action causal blocks."""
 
     max_chunk_size: int = 4
     chunk_size: int = 24
-    video_offsets: tuple[int, ...] = (0, 3, 6, 9, 12, 15, 18, 21)
+    video_offsets: tuple[int, ...] | None = None
 
     def __post_init__(self) -> None:
         if self.max_chunk_size <= 0:
             raise ValueError("max_chunk_size must be positive")
-        if self.chunk_size != 24:
-            raise ValueError("native parity currently requires chunk_size=24")
+        if self.chunk_size not in {24, 48}:
+            raise ValueError("native temporal packing requires chunk_size 24 or 48")
+        expected_offsets = tuple(range(0, self.chunk_size, self.chunk_size // 8))
+        if self.video_offsets is None:
+            object.__setattr__(self, "video_offsets", expected_offsets)
+        elif tuple(self.video_offsets) != expected_offsets:
+            raise ValueError(
+                "video_offsets must sample eight uniformly spaced frames "
+                f"for chunk_size={self.chunk_size}: {expected_offsets}"
+            )
 
     def indices(
         self,
@@ -65,7 +75,7 @@ class LanguageTemporalPacker:
         target_trajectory = trajectories[anchor]
 
         def compatible(candidate: int) -> bool:
-            # +24 is the endpoint after the final +21 video offset.
+            # The final endpoint belongs to the same language and trajectory.
             return (
                 candidate >= 0
                 and candidate + self.chunk_size < length
@@ -105,27 +115,29 @@ class LanguageTemporalPacker:
             step += 1
         if not anchors:
             raise ValueError(
-                "anchor has no complete 24-step chunk within its language/trajectory boundary"
+                f"anchor has no complete {self.chunk_size}-step chunk within its "
+                "language/trajectory boundary"
             )
 
         anchor_array = np.asarray(sorted(set(anchors)), dtype=np.int64)
         action = np.concatenate(
             [np.arange(item, item + self.chunk_size, dtype=np.int64) for item in anchor_array]
         )
+        assert self.video_offsets is not None
         video = np.concatenate(
             [
                 item + np.asarray(self.video_offsets, dtype=np.int64)
                 for item in anchor_array
             ]
         )
-        video = np.append(video, video[-1] + 3).astype(np.int64)
+        video = np.append(video, anchor_array[-1] + self.chunk_size).astype(np.int64)
         result = TemporalPackingIndices(
             video=video,
             action=action,
             state=anchor_array.copy(),
             anchors=anchor_array,
         )
-        result.validate(self.max_chunk_size)
+        result.validate(self.max_chunk_size, action_steps_per_chunk=self.chunk_size)
         return result
 
 

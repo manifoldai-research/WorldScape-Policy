@@ -4,16 +4,19 @@ import csv
 import gc
 import importlib
 import json
+import math
 import multiprocessing
 import os
 import sys
 import time
 import traceback
-from contextlib import redirect_stderr, redirect_stdout
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from dataclasses import dataclass
 from datetime import datetime
 from io import StringIO
 from pathlib import Path
+from threading import RLock
 from typing import Any
 
 import hydra
@@ -29,6 +32,7 @@ SUMMARY_PHASES = ("clean", "random")
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from evals.robotwin2.checkpoint import resolve_robotwin2_evaluation_config
 from evals.robotwin2.scheduler import (
     DynamicTaskScheduler,
     ProcessWorker,
@@ -58,18 +62,47 @@ class EvaluationJobResult:
 
 
 class _Tee:
+    """A worker-scoped stream whose task log can safely change between jobs.
+
+    Third-party logging handlers retain the stderr object they first observe.
+    Keep that object alive and attach a file only for its open lifetime.
+    """
+
     def __init__(self, *streams: Any) -> None:
         self.streams = streams
+        self._log_stream: Any = None
+        self._lock = RLock()
+
+    @contextmanager
+    def log_to(self, stream: Any) -> Iterator[None]:
+        with self._lock:
+            previous = self._log_stream
+            self._log_stream = stream
+        try:
+            yield
+        finally:
+            # A logger thread may still be writing when a task ends. Wait for
+            # that write before detaching the file, which the caller then closes.
+            with self._lock:
+                self._log_stream = previous
+
+    def _active_streams(self) -> tuple[Any, ...]:
+        streams = self.streams
+        if self._log_stream is not None:
+            streams += (self._log_stream,)
+        return tuple(stream for stream in streams if not getattr(stream, "closed", False))
 
     def write(self, text: str) -> int:
-        for stream in self.streams:
-            stream.write(text)
-            stream.flush()
+        with self._lock:
+            for stream in self._active_streams():
+                stream.write(text)
+                stream.flush()
         return len(text)
 
     def flush(self) -> None:
-        for stream in self.streams:
-            stream.flush()
+        with self._lock:
+            for stream in self._active_streams():
+                stream.flush()
 
     def isatty(self) -> bool:
         return False
@@ -138,6 +171,152 @@ def _result_path(output: Path, job: EvaluationJob) -> Path:
     return output / job.task_name / job.phase / f"_result_{suffix}.txt"
 
 
+def _curobo_planner_specs(
+    robotwin_root: Path, phases: Iterable[str]
+) -> list[tuple[str, list[float]]]:
+    """Resolve the (curobo yml, robot pose) pairs `Robot.set_planner` will build.
+
+    Follow script/eval_policy.main + envs/robot/robot.py so prewarm exercises
+    the same cuRobo configurations and Warp kernel paths as the workers.
+    """
+
+    task_config_dir = robotwin_root / "task_config"
+    embodiment_types = yaml.safe_load(
+        (task_config_dir / "_embodiment_config.yml").read_text(encoding="utf-8")
+    )
+    specs: dict[str, list[float]] = {}
+    for phase in phases:
+        task_args = yaml.safe_load(
+            (task_config_dir / f"{PHASE_CONFIG[phase]}.yml").read_text(
+                encoding="utf-8"
+            )
+        )
+        embodiment = list(task_args["embodiment"])
+        if len(embodiment) == 1:
+            robot_files = [embodiment[0], embodiment[0]]
+            yml_names = ["curobo_left.yml", "curobo_right.yml"]
+        elif len(embodiment) == 3:
+            robot_files = [embodiment[0], embodiment[1]]
+            yml_names = ["curobo.yml", "curobo.yml"]
+        else:
+            raise ValueError(f"embodiment items should be 1 or 3: {embodiment}")
+        for robot_file, yml_name in zip(robot_files, yml_names):
+            robot_dir = robotwin_root / embodiment_types[robot_file]["file_path"]
+            yml_path = (robot_dir / yml_name).resolve()
+            if not yml_path.is_file():
+                raise FileNotFoundError(f"cuRobo config not found: {yml_path}")
+            robot_cfg = yaml.safe_load(
+                (robot_dir / "config.yml").read_text(encoding="utf-8")
+            )
+            pose = [float(v) for v in robot_cfg["robot_pose"][0]]
+            specs.setdefault(str(yml_path), pose)
+    return list(specs.items())
+
+
+def _redirect_prewarm_output(log_path: str) -> None:
+    """Capture Python messages and native NVRTC stderr in the child process."""
+
+    sys.stdout.flush()
+    sys.stderr.flush()
+    descriptor = os.open(log_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
+    try:
+        os.dup2(descriptor, 1)
+        os.dup2(descriptor, 2)
+    finally:
+        if descriptor not in {1, 2}:
+            os.close(descriptor)
+
+
+def _prewarm_worker(
+    robotwin_root: str,
+    gpu_id: int,
+    planner_specs: list[tuple[str, list[float]]],
+    log_path: str | None = None,
+) -> None:
+    """Populate cuRobo/Warp caches before evaluation workers compete for them.
+
+    Serialize the initial planner builds in a dedicated process to avoid
+    concurrent cold-cache compilation. A compile failure can have other causes;
+    preserve the compiler's native diagnostics in the run's prewarm log.
+    """
+
+    if log_path is not None:
+        _redirect_prewarm_output(log_path)
+    print(f"[warp-prewarm] child gpu={gpu_id}", flush=True)
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+    os.chdir(robotwin_root)
+    for path in (robotwin_root, os.path.join(robotwin_root, "policy")):
+        if path not in sys.path:
+            sys.path.insert(0, path)
+    import sapien.core as sapien  # noqa: PLC0415 - simulator import is heavy
+
+    planner_module = importlib.import_module("envs.robot.planner")
+    planner_cls = getattr(planner_module, "CuroboPlanner", None)
+    if planner_cls is None:
+        raise RuntimeError(
+            "CuroboPlanner is unavailable in envs/robot/planner.py; "
+            "expert_check cannot run without cuRobo."
+        )
+    for yml_path, pose in planner_specs:
+        started = time.perf_counter()
+        planner_cls(
+            sapien.Pose(pose[:3], pose[3:]),
+            [],
+            [],
+            yml_path=yml_path,
+        )
+        print(
+            f"[warp-prewarm] built {os.path.basename(yml_path)} in "
+            f"{time.perf_counter() - started:.1f}s",
+            flush=True,
+        )
+
+
+def _prewarm_warp_kernels(
+    robotwin_root: Path,
+    *,
+    gpu_id: int,
+    phases: Iterable[str],
+    timeout_s: float,
+    log_path: Path | None = None,
+) -> None:
+    if not math.isfinite(timeout_s) or timeout_s <= 0:
+        raise ValueError("warp_prewarm_timeout_s must be positive and finite")
+    specs = _curobo_planner_specs(robotwin_root, phases)
+    print(
+        f"[warp-prewarm] gpu={gpu_id} cache="
+        f"{os.environ.get('WARP_CACHE_PATH', '<warp default>')} "
+        f"planners={[os.path.basename(p) for p, _ in specs]}",
+        flush=True,
+    )
+    started = time.perf_counter()
+    context = multiprocessing.get_context("spawn")
+    process = context.Process(
+        target=_prewarm_worker,
+        args=(str(robotwin_root), int(gpu_id), specs, None if log_path is None else str(log_path)),
+        name="warp-prewarm",
+    )
+    diagnostics = "" if log_path is None else f"; see {log_path}"
+    process.start()
+    process.join(timeout=timeout_s)
+    if process.is_alive():
+        process.terminate()
+        process.join()
+        raise RuntimeError(
+            f"Warp kernel prewarm exceeded {timeout_s:.0f}s on GPU {gpu_id}{diagnostics}"
+        )
+    if process.exitcode != 0:
+        raise RuntimeError(
+            f"Warp kernel prewarm failed on GPU {gpu_id} "
+            f"(exit code {process.exitcode}); refusing to start workers "
+            f"against a broken cuRobo/Warp runtime{diagnostics}"
+        )
+    print(
+        f"[warp-prewarm] done in {time.perf_counter() - started:.1f}s{diagnostics}",
+        flush=True,
+    )
+
+
 def _resolved_config(config: dict[str, Any]) -> dict[str, Any]:
     return OmegaConf.to_container(OmegaConf.create(config), resolve=True)  # type: ignore[return-value]
 
@@ -196,8 +375,11 @@ class NativeRoboTwinTaskRunner:
                 sys.path.insert(0, str(path))
         if bool(config["EVALUATION"].get("render_preflight", True)):
             _run_render_preflight(gpu_id=gpu_id)
-        self.bridge = importlib.import_module("script.eval_policy")
-        self.policy_module = importlib.import_module(POLICY_NAME)
+        self._stdout = _Tee(sys.__stdout__)
+        self._stderr = _Tee(sys.__stderr__)
+        with redirect_stdout(self._stdout), redirect_stderr(self._stderr):
+            self.bridge = importlib.import_module("script.eval_policy")
+            self.policy_module = importlib.import_module(POLICY_NAME)
         self.model: Any = None
 
     def __call__(self, job: EvaluationJob) -> EvaluationJobResult:
@@ -207,42 +389,45 @@ class NativeRoboTwinTaskRunner:
         )
         log.parent.mkdir(parents=True, exist_ok=True)
         job_started = time.perf_counter()
-        try:
-            if self.model is not None:
-                self.policy_module.prepare_model_for_evaluation_job(self.model)
-            usr_args = self._usr_args(job)
-            with log.open("w", encoding="utf-8") as stream:
-                tee = _Tee(sys.__stdout__, stream)
-                with redirect_stdout(tee), redirect_stderr(tee):
+        with log.open("w", encoding="utf-8") as stream:
+            with (
+                self._stdout.log_to(stream),
+                self._stderr.log_to(stream),
+                redirect_stdout(self._stdout),
+                redirect_stderr(self._stderr),
+            ):
+                try:
+                    if self.model is not None:
+                        self.policy_module.prepare_model_for_evaluation_job(self.model)
+                    usr_args = self._usr_args(job)
                     self.model = self.bridge.main(usr_args, model=self.model)
                     print(
                         f"[manager-timing] job_s="
                         f"{time.perf_counter() - job_started:.3f}"
                     )
-            rate = _parse_rate(_result_path(self.output_dir, job))
-            return EvaluationJobResult(
-                job.task_name,
-                job.phase,
-                self.gpu_id,
-                True,
-                rate,
-                str(log),
-            )
-        except BaseException as exc:  # noqa: BLE001 - task failures are results
-            with log.open("a", encoding="utf-8") as stream:
-                traceback.print_exc(file=stream)
-            return EvaluationJobResult(
-                job.task_name,
-                job.phase,
-                self.gpu_id,
-                False,
-                None,
-                str(log),
-                f"{type(exc).__name__}: {exc}",
-            )
-        finally:
-            if self.model is not None:
-                self.policy_module.reset_model(self.model)
+                    rate = _parse_rate(_result_path(self.output_dir, job))
+                    return EvaluationJobResult(
+                        job.task_name,
+                        job.phase,
+                        self.gpu_id,
+                        True,
+                        rate,
+                        str(log),
+                    )
+                except BaseException as exc:  # noqa: BLE001 - task failures are results
+                    traceback.print_exc(file=stream)
+                    return EvaluationJobResult(
+                        job.task_name,
+                        job.phase,
+                        self.gpu_id,
+                        False,
+                        None,
+                        str(log),
+                        f"{type(exc).__name__}: {exc}",
+                    )
+                finally:
+                    if self.model is not None:
+                        self.policy_module.reset_model(self.model)
 
     def _usr_args(self, job: EvaluationJob) -> dict[str, Any]:
         evaluation = self.config["EVALUATION"]
@@ -267,17 +452,18 @@ class NativeRoboTwinTaskRunner:
             "mixed_precision": str(self.config.get("mixed_precision", "bf16")),
             "mode": str(evaluation.get("mode", "auto")),
             "action_type": str(evaluation.get("action_type", "qpos")),
-            "action_horizon": int(evaluation.get("action_horizon", 24)),
-            "replan_steps": int(evaluation.get("replan_steps", 24)),
+            "action_horizon": evaluation.get("action_horizon"),
+            "replan_steps": evaluation.get("replan_steps"),
             "memory_reset_chunks": int(
                 evaluation.get("memory_reset_chunks", 2)
             ),
             "skip_get_obs_within_replan": bool(
                 evaluation.get("skip_get_obs_within_replan", True)
             ),
-            "observation_interval": int(
-                evaluation.get("observation_interval", 3)
-            ),
+            "observation_interval": evaluation.get("observation_interval"),
+            "vlm_history_stride": evaluation.get("vlm_history_stride"),
+            "diffusion_view_layout": evaluation.get("diffusion_view_layout"),
+            "vlm_preprocessing": evaluation.get("vlm_preprocessing"),
             "vlm_history_num_frames": int(
                 evaluation.get("vlm_history_num_frames", 8)
             ),
@@ -298,6 +484,7 @@ def run_manager(config: dict[str, Any]) -> dict[str, Any]:
     robotwin_root = _resolve_path(str(evaluation["robotwin_root"]))
     if not checkpoint.is_dir():
         raise FileNotFoundError(f"Checkpoint not found: {checkpoint}")
+    evaluation.update(resolve_robotwin2_evaluation_config(checkpoint, evaluation))
     if not (robotwin_root / "script/eval_policy.py").is_file():
         raise FileNotFoundError(f"Invalid RoboTwin root: {robotwin_root}")
     _ensure_policy_link(robotwin_root)
@@ -369,6 +556,14 @@ def run_manager(config: dict[str, Any]) -> dict[str, Any]:
         _write_summary(output, results, tasks)
 
     if worker_count:
+        if bool(evaluation.get("warp_prewarm", True)):
+            _prewarm_warp_kernels(
+                robotwin_root,
+                gpu_id=gpu_ids[0],
+                phases=phases,
+                timeout_s=float(evaluation.get("warp_prewarm_timeout_s", 1800)),
+                log_path=output / "warp_prewarm.log",
+            )
         context = multiprocessing.get_context("spawn")
         commands = context.Queue()
         events = context.Queue()

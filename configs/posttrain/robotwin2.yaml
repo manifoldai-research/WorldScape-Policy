@@ -1,13 +1,13 @@
-# RoboTwin 2 post-training overlay for supported LeRobot prompt datasets.
+# RoboTwin 2 post-training with the default 384x320 mosaic_T camera layout.
 includes:
   - common_wan22.yaml
 
 selectors:
   task: ${oc.env:WSP_TASK,robotwin2}
   run_name: ${oc.env:RUN_NAME,baseline}
-  mode: ${oc.env:WSP_MODE,interactive}
-  visual_prompt: ${oc.env:VISUAL_PROMPT,demo}
-  dataset_name: ${oc.env:NATIVE_DATASET_NAME,worldscape_lerobot_demo}
+  mode: ${oc.env:WSP_MODE,auto}
+  visual_prompt: ${oc.env:VISUAL_PROMPT,none}
+  dataset_name: ${oc.env:NATIVE_DATASET_NAME,worldscape_lerobot_text}
 
 profiles:
   dataset_name:
@@ -25,6 +25,8 @@ profiles:
         visual_prompt: none
 
 batch_adapter:
+  diffusion_view_layout: mosaic_T
+  vlm_preprocessing: ${model.model_config.model.visual_memory.vlm_preprocessing}
   embodiment_ids:
     robotwin2: 0
 
@@ -68,11 +70,26 @@ model:
       shape:
         # Temporal packing emits 8 video frames per chunk plus one endpoint.
         num_frames: ${oc.decode:${oc.env:WAM_NUM_FRAMES,33}}
+        actions_per_block: ${oc.decode:${oc.env:ACTION_HORIZON,24}}
+        action_horizon: ${model.model_config.model.shape.actions_per_block}
+      visual_memory:
+        diffusion_view_layout: mosaic_T
+        vlm_preprocessing:
+          mode: resize
+          height: 160
+          width: 320
       wam:
         core:
           parameters:
             # Must match temporal packing in the dataset below.
             max_chunk_size: ${oc.decode:${oc.env:WAM_MAX_CHUNK_SIZE,4}}
+            frame_seqlen: 120
+            num_action_per_block: ${model.model_config.model.shape.action_horizon}
+
+noise_kernel:
+  config:
+    num_action_per_block: ${model.model_config.model.shape.action_horizon}
+    action_horizon: ${model.model_config.model.shape.action_horizon}
 
 data_loader:
   _target_: worldscape_policy.training.data.build_registered_loader
@@ -84,7 +101,8 @@ data_loader:
   prefetch_factor: 2
   persistent_workers: true
   seed: ${oc.decode:${oc.env:SEED,62}}
-  augment_video: ${oc.decode:${oc.env:AUGMENT_VIDEO,true}}
+  # Keep raw camera pixels until the deterministic mosaic_T preprocessing.
+  augment_video: false
   training: true
   action_mode: joint
   relative_action: false
@@ -94,7 +112,7 @@ data_loader:
   dataset_kwargs:
     data_root: ${oc.env:DATA_ROOT}
     embodiment: robotwin2
-    action_horizon: ${oc.decode:${oc.env:ACTION_HORIZON,24}}
+    action_horizon: ${model.model_config.model.shape.action_horizon}
     temporal_packing: true
     max_chunk_size: ${oc.decode:${oc.env:WAM_MAX_CHUNK_SIZE,4}}
     max_event_chunks: ${oc.decode:${oc.env:MAX_EVENT_CHUNKS,1}}
@@ -103,8 +121,8 @@ data_loader:
     history_window: ${oc.decode:${oc.env:VLM_HISTORY_WINDOW,192}}
     single_high_level_instruction_per_episode: ${oc.decode:${oc.env:SINGLE_HIGH_LEVEL_INSTRUCTION_PER_EPISODE,false}}
     episode_cache_size: ${oc.decode:${oc.env:LEROBOT_EPISODE_CACHE_SIZE,2}}
-    cache_video_resize_width: ${oc.decode:${oc.env:CACHE_VIDEO_RESIZE_WIDTH,320}}
-    cache_video_resize_height: ${oc.decode:${oc.env:CACHE_VIDEO_RESIZE_HEIGHT,160}}
+    cache_video_resize_width: null
+    cache_video_resize_height: null
     wo_norm: false
     seed: ${oc.decode:${oc.env:SEED,62}}
 

@@ -358,6 +358,7 @@ def _eligible_temporal_anchors(
     arrays: Mapping[str, np.ndarray],
     max_chunk_size: int,
     *,
+    action_horizon: int = 24,
     respect_trajectory_segments: bool = True,
     anchor_start: int = 0,
     step_stride: int = 1,
@@ -386,7 +387,9 @@ def _eligible_temporal_anchors(
     if mask is not None:
         length = min(length, int(mask.sum()))
     labels, segment_ids = _temporal_labels(arrays, length, mask)
-    packer = LanguageTemporalPacker(max_chunk_size=max_chunk_size)
+    packer = LanguageTemporalPacker(
+        max_chunk_size=max_chunk_size, chunk_size=action_horizon
+    )
     anchors: list[int] = []
     start = int(anchor_start) % int(step_stride)
     for anchor in range(start, length, int(step_stride)):
@@ -808,7 +811,9 @@ def _build_sample(
 
     source_indices: dict[str, np.ndarray] | None = None
     if temporal_packing:
-        packed = LanguageTemporalPacker(max_chunk_size=max_chunk_size).indices(
+        packed = LanguageTemporalPacker(
+            max_chunk_size=max_chunk_size, chunk_size=action_horizon
+        ).indices(
             temporal_anchor_index,
             packing_labels,
             trajectory_ids=segment_ids if respect_trajectory_segments else None,

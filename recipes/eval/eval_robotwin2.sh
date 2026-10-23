@@ -29,9 +29,8 @@ export WORLDSCAPE_CHECKPOINT="$ROBOTWIN2_EVAL_MODEL_PATH"
 export WSP_MODE="${WSP_MODE:-auto}"
 export ROBOTWIN_EPISODES_PER_TASK="${ROBOTWIN_EPISODES_PER_TASK:-100}"
 export ROBOTWIN_MEMORY_RESET_CHUNKS="${ROBOTWIN_MEMORY_RESET_CHUNKS:-0}"
-# Match posttrain_robotwin2.sh: four VLM anchors at a 24-action stride.
+# Model geometry and history stride are resolved from the checkpoint by default.
 export ROBOTWIN_VLM_HISTORY_NUM_FRAMES="${ROBOTWIN_VLM_HISTORY_NUM_FRAMES:-4}"
-export ROBOTWIN_REPLAN_STEPS="${ROBOTWIN_REPLAN_STEPS:-24}"
 
 case "$WSP_MODE" in
     interactive|auto) ;;

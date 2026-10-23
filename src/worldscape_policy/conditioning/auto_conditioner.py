@@ -37,6 +37,7 @@ class AutoConditioner(nn.Module):
         ),
         semantic_gate_only: bool = False,
         semantic_grad_clip_norm: float = 0.5,
+        context_length: int | None = None,
     ) -> None:
         super().__init__()
         if max_history_steps <= 0:
@@ -56,6 +57,13 @@ class AutoConditioner(nn.Module):
         self.semantic_grad_clip_norm = float(semantic_grad_clip_norm)
         if self.semantic_grad_clip_norm < 0:
             raise ValueError("semantic_grad_clip_norm must be non-negative")
+        if context_length is not None and (
+            isinstance(context_length, bool)
+            or not isinstance(context_length, int)
+            or context_length <= 0
+        ):
+            raise ValueError("context_length must be a positive integer when configured")
+        self.context_length = context_length
         self._event_memory_manager = EventMemoryManager(
             max_history_steps=self.max_history_steps,
             detach_inference_history=self.detach_inference_history,
@@ -67,6 +75,24 @@ class AutoConditioner(nn.Module):
         if parameter is not None and tokens.is_floating_point():
             tokens = tokens.to(device=parameter.device, dtype=parameter.dtype)
         return self.projector(tokens)
+
+    def _pad_context(self, tokens: torch.Tensor) -> torch.Tensor:
+        if self.context_length is None:
+            return tokens
+        token_count = tokens.shape[1]
+        if token_count > self.context_length:
+            raise ValueError(
+                "Auto context exceeds configured context_length: "
+                f"{token_count} > {self.context_length}"
+            )
+        if token_count == self.context_length:
+            return tokens
+        padding = tokens.new_zeros(
+            tokens.shape[0],
+            self.context_length - token_count,
+            tokens.shape[2],
+        )
+        return torch.cat((tokens, padding), dim=1)
 
     @staticmethod
     def _require_matching_token_widths(
@@ -231,7 +257,11 @@ class AutoConditioner(nn.Module):
                 ),
             )
             semantic_prediction = self.output_norm(semantic_prediction)
-        negative_condition = self.output_norm(projected_negative)
+        positive_condition = self._pad_context(positive_condition)
+        semantic_prediction = self._pad_context(semantic_prediction)
+        negative_condition = self._pad_context(
+            self.output_norm(projected_negative)
+        )
         if not training:
             positive_condition, negative_condition = (
                 self._event_memory_manager.cached_conditions(

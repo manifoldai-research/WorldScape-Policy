@@ -4,6 +4,12 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from worldscape_policy.data.video_preprocessing import validate_vlm_preprocessing
+from worldscape_policy.visual_mosaic import (
+    DiffusionViewLayout,
+    validate_diffusion_view_layout,
+)
+
 MODEL_CONFIG_SCHEMA_VERSION = "1"
 GENERATION_CONFIG_SCHEMA_VERSION = "1"
 
@@ -98,7 +104,6 @@ class ShapeConfig:
         )
         expected = {
             "frame_block_size": 2,
-            "actions_per_block": 24,
             "states_per_block": 1,
         }
         for name, required in expected.items():
@@ -106,6 +111,10 @@ class ShapeConfig:
                 raise ValueError(
                     f"{path}.{name} must be {required} for native Wan2.2"
                 )
+        if result.actions_per_block not in {24, 48}:
+            raise ValueError(
+                "model.shape.actions_per_block must be 24 or 48 for native Wan2.2"
+            )
         if (result.num_frames - 1) % result.frame_block_size:
             raise ValueError(
                 "model.shape.num_frames must be one anchor plus complete "
@@ -113,8 +122,7 @@ class ShapeConfig:
             )
         if result.action_horizon != result.actions_per_block:
             raise ValueError(
-                "model.shape.action_horizon must be the native 24-action "
-                "inference block"
+                "model.shape.action_horizon must match actions_per_block"
             )
         return result
 
@@ -151,12 +159,15 @@ class AutoConditionConfig:
     output_norm: bool
     semantic_gate_only: bool
     semantic_grad_clip_norm: float
+    context_length: int | None = None
 
     @classmethod
     def from_dict(cls, value: object) -> AutoConditionConfig:
         path = "model.condition_router.auto"
+        compatible = _mapping(value, path)
+        compatible.setdefault("context_length", None)
         raw = _strict(
-            value,
+            compatible,
             path,
             {
                 "vlm",
@@ -164,6 +175,7 @@ class AutoConditionConfig:
                 "output_norm",
                 "semantic_gate_only",
                 "semantic_grad_clip_norm",
+                "context_length",
             },
         )
         result = cls(
@@ -176,6 +188,15 @@ class AutoConditionConfig:
             semantic_grad_clip_norm=_number(
                 raw["semantic_grad_clip_norm"],
                 f"{path}.semantic_grad_clip_norm",
+            ),
+            context_length=(
+                None
+                if raw["context_length"] is None
+                else _integer(
+                    raw["context_length"],
+                    f"{path}.context_length",
+                    minimum=1,
+                )
             ),
         )
         if result.semantic_grad_clip_norm < 0:
@@ -284,11 +305,12 @@ class VisualMemoryConfig:
     vae: ComponentConfig
     image_encoder: ComponentConfig
     persistent_prompt: Literal["none", "goal_or_demo"]
-    diffusion_view_layout: Literal["mosaic_2x2"]
+    diffusion_view_layout: DiffusionViewLayout
     view_index: int
     tiled: bool
     tile_size: tuple[int, int]
     tile_stride: tuple[int, int]
+    vlm_preprocessing: dict[str, Any] | None = None
 
     @classmethod
     def from_dict(cls, value: object) -> VisualMemoryConfig:
@@ -302,20 +324,21 @@ class VisualMemoryConfig:
             "tiled",
             "tile_size",
             "tile_stride",
+            "vlm_preprocessing",
         }
         # Accepted only for compatibility with older native manifests.
         compatible = _mapping(value, path)
         compatible.pop("recent_chunks", None)
         compatible.setdefault("diffusion_view_layout", "mosaic_2x2")
+        compatible.setdefault("vlm_preprocessing", None)
         raw = _strict(compatible, path, fields)
         if raw["persistent_prompt"] not in {"none", "goal_or_demo"}:
             raise ValueError(
                 f"{path}.persistent_prompt must be 'none' or 'goal_or_demo'"
             )
-        if raw["diffusion_view_layout"] != "mosaic_2x2":
-            raise ValueError(
-                f"{path}.diffusion_view_layout must be 'mosaic_2x2'"
-            )
+        layout = validate_diffusion_view_layout(
+            raw["diffusion_view_layout"], path=f"{path}.diffusion_view_layout"
+        )
 
         def pair(key: str) -> tuple[int, int]:
             item = raw[key]
@@ -333,11 +356,12 @@ class VisualMemoryConfig:
                 raw["image_encoder"], f"{path}.image_encoder"
             ),
             persistent_prompt=raw["persistent_prompt"],
-            diffusion_view_layout=raw["diffusion_view_layout"],
+            diffusion_view_layout=layout,
             view_index=_integer(raw["view_index"], f"{path}.view_index"),
             tiled=_boolean(raw["tiled"], f"{path}.tiled"),
             tile_size=pair("tile_size"),
             tile_stride=pair("tile_stride"),
+            vlm_preprocessing=validate_vlm_preprocessing(raw["vlm_preprocessing"]),
         )
 
 

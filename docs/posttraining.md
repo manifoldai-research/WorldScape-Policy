@@ -5,13 +5,10 @@ Public posttrain and pretrain recipes share the torchrun/DeepSpeed bootstrap in
 
 ## Generalist vs expert
 
-
-| Launcher family                       | Config                             | Role                           |
-| ------------------------------------- | ---------------------------------- | ------------------------------ |
-| `posttrain_robotwin2.sh`              | `configs/posttrain/robotwin2.yaml` | Multi-task LeRobot generalist  |
-| `posttrain_robotwin2_full.sh`         | `configs/posttrain/robotwin2.yaml` | Full-data RoboTwin2 generalist |
+| Launcher | Config | Role |
+| --- | --- | --- |
+| `recipes/posttrain/posttrain_robotwin2_h48.sh` | `configs/posttrain/robotwin2_h48_auto.yaml` | RoboTwin2 H48 Auto generalist |
 | `posttrain_agilex.sh` + task wrappers | `configs/posttrain/agilex.yaml`    | Single-task AgileX expert      |
-
 
 AgileX task recipes only select `mode`, visual prompt, and dataset profile.
 They do not introduce task-specific YAML files.
@@ -23,17 +20,6 @@ PRETRAINED_MODEL_PATH=/models/wsp DATA_ROOT=/data/agilex \
 ./recipes/posttrain/posttrain_agilex_fold_shirt_text.sh training.max_steps=1000
 ```
 
-Use the full-data RoboTwin2 wrapper when training on the complete dataset:
-
-```bash
-PRETRAINED_MODEL_PATH=/models/wsp \
-DATA_ROOT=/data/robotwin2 \
-ZSCORE_STATS_PATH=/data/robotwin2/dataset_stats.json \
-./recipes/posttrain/posttrain_robotwin2_full.sh
-```
-
-Both launchers train 14-D absolute joint actions with global z-score normalization; use statistics computed from the same dataset profile.
-
 Posttrain YAMLs use a strict top-level `includes` list. Paths are relative to
 the YAML that declares them; included files merge in order, followed by the
 declaring file. Selector profiles are resolved after composition, and command
@@ -44,6 +30,26 @@ Shared Wan2.2 defaults live in `configs/posttrain/common_wan22.yaml`, which
 recursively composes model, conditioning, memory, and WAM-owned fragments.
 Platform YAMLs contain only selector defaults, dataset constraints, loader
 differences, evaluation linkage, and platform prompt/geometry details.
+
+## RoboTwin
+
+- `configs/posttrain/robotwin2.yaml`: default H24, configurable action horizon,
+  and the shared mosaic_T preprocessing.
+- `configs/posttrain/robotwin2_h48_auto.yaml`: an overlay on `robotwin2.yaml` for
+  Auto, H48, and VLM context.
+
+RoboTwin trains 14-D absolute joint actions with global z-score normalization.
+The H48 launcher accepts either the clean or full dataset. Set `DATA_ROOT` and
+`ZSCORE_STATS_PATH` to the matching dataset and normalization statistics.
+
+```bash
+PRETRAINED_MODEL_PATH=/models/wsp_2_pretrain \
+DATA_ROOT=/data/robotwin2-clean \
+ZSCORE_STATS_PATH=/data/robotwin2-clean/dataset_stats.json \
+RUN_NAME=robotwin2_h48_auto \
+NUM_GPUS=8 MAX_STEPS=20000 SAVE_STEPS=2500 \
+bash recipes/posttrain/posttrain_robotwin2_h48.sh
+```
 
 ## Text-instruction prompts
 

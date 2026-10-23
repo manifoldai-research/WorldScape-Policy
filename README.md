@@ -275,26 +275,21 @@ ln -s "$(pwd)/experiments/robotwin/wsp2_policy" \
   third_party/RoboTwin/policy/wsp2_policy
 ```
 
-Clean-only training:
+RoboTwin training defaults to `mosaic_T`: a 384×320 T-shaped canvas with the
+head view above the left and right wrist views.
+
+Train in Auto Mode with a 48-action horizon. Set `DATA_ROOT` to the clean or
+full dataset and use normalization statistics from the same dataset:
 
 ```bash
 DATA_ROOT=/data/robotwin2-clean \
 ZSCORE_STATS_PATH=/data/robotwin2-clean/dataset_stats.json \
 PRETRAINED_MODEL_PATH="$WSP_MODEL_ROOT/wsp_2_pretrain" \
-NUM_GPUS=8 ./recipes/posttrain/posttrain_robotwin2.sh
+NUM_GPUS=8 bash recipes/posttrain/posttrain_robotwin2_h48.sh
 ```
 
-For the full dataset:
-
-```bash
-DATA_ROOT=/data/robotwin2-full \
-ZSCORE_STATS_PATH=/data/robotwin2-full/dataset_stats.json \
-PRETRAINED_MODEL_PATH="$WSP_MODEL_ROOT/wsp_2_pretrain" \
-NUM_GPUS=8 ./recipes/posttrain/posttrain_robotwin2_full.sh
-```
-
-Evaluation uses 14-D absolute joint actions, 24-step chunks, nine
-rolling observation frames, and one persistent model per GPU worker:
+Evaluation uses 14-D absolute joint actions, the checkpoint's 24- or 48-step
+horizon, nine rolling observation frames, and one persistent model per GPU worker:
 
 ```bash
 ROBOTWIN2_EVAL_MODEL_PATH=/path/to/checkpoint \

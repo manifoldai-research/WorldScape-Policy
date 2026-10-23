@@ -302,6 +302,7 @@ class NativeLeRobotDataset(Dataset[EventSample]):
             anchors = _eligible_temporal_anchors(
                 arrays,
                 self.temporal_max_chunk_size,
+                action_horizon=self.action_horizon,
                 respect_trajectory_segments=self.respect_trajectory_segments,
             )
             if self.temporal_anchor_index in anchors:
@@ -329,7 +330,8 @@ class NativeLeRobotDataset(Dataset[EventSample]):
             )
             labels, segments = _temporal_labels(arrays, length, mask)
             packed = LanguageTemporalPacker(
-                max_chunk_size=self.temporal_max_chunk_size
+                max_chunk_size=self.temporal_max_chunk_size,
+                chunk_size=self.action_horizon,
             ).indices(
                 anchor,
                 labels,

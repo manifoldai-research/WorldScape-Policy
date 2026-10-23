@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import replace
+from typing import Any
 
 import torch
 from torch import Tensor, nn
@@ -29,6 +31,7 @@ class WorldScapePolicy(nn.Module):
         wam: nn.Module,
         visual_memory: VisualPrefillManager,
         configured_mode: InteractionMode | str | None = None,
+        vlm_preprocessing: dict[str, Any] | None = None,
     ) -> None:
         super().__init__()
         if not isinstance(wam, WAMPlugin):
@@ -38,6 +41,7 @@ class WorldScapePolicy(nn.Module):
         if not isinstance(visual_memory, VisualPrefillManager):
             raise TypeError("visual_memory must be a VisualPrefillManager")
         self.visual_memory = visual_memory
+        self.vlm_preprocessing = deepcopy(vlm_preprocessing)
         self.configured_mode = (
             InteractionMode.parse(configured_mode)
             if configured_mode is not None
@@ -269,6 +273,12 @@ class WorldScapePolicy(nn.Module):
                 raise ValueError(
                     "prepared diffusion reference must have shape [B,T,C,H,W]"
                 )
+            max_chunk_size = int(
+                getattr(getattr(self.wam, "core", None), "max_chunk_size", 0)
+            )
+            if max_chunk_size == 1:
+                # Every local replan starts from the latest real observation.
+                return reference_video[:, -1:], True
             return reference_video[:, :1], True
         return observation.head_view, False
 

@@ -6,7 +6,7 @@ import os
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, Mapping, cast
+from typing import Any, Literal, Mapping
 
 import torch
 from hydra.utils import instantiate
@@ -29,6 +29,10 @@ from worldscape_policy.registry import (
     build_wan22_policy,
 )
 from worldscape_policy.types import InteractionMode
+from worldscape_policy.visual_mosaic import (
+    DiffusionViewLayout,
+    validate_diffusion_view_layout,
+)
 from worldscape_policy.wam.registry import DEFAULT_WAM_REGISTRY, WAMRegistry
 from worldscape_policy.wam.wan22 import Wan22DistributedContext, Wan22KernelConfig
 
@@ -72,7 +76,7 @@ def build_wan22_policy_from_checkpoint(
     checkpoint_dir: str | Path | None = None,
     *,
     visual_input_range: VisualInputRange,
-    diffusion_view_layout: Literal["mosaic_2x2"] | None = None,
+    diffusion_view_layout: DiffusionViewLayout | None = None,
     device: str | torch.device = "cpu",
     expected_mode: InteractionMode | str | None = None,
     expected_num_frames: int | None = None,
@@ -127,7 +131,9 @@ def build_wan22_policy_from_checkpoint(
             validate_native_checkpoint_artifacts(directory)
         normalization = json.loads((directory / "normalization.json").read_text())
         checkpoint_range = normalization["visual"]["input_range"]
-        if visual_input_range != checkpoint_range:
+        if visual_input_range != checkpoint_range and not (
+            training and initialization == "checkpoint_overlay"
+        ):
             raise ValueError(
                 "visual_input_range does not match native normalization artifact: "
                 f"requested {visual_input_range!r}, checkpoint requires {checkpoint_range!r}"
@@ -159,16 +165,14 @@ def build_wan22_policy_from_checkpoint(
             raise ValueError("vlm_context_dim must be positive")
         action["vlm_context_dim"] = int(vlm_context_dim)
     if diffusion_view_layout is not None:
-        if diffusion_view_layout != "mosaic_2x2":
-            raise ValueError("diffusion_view_layout must be 'mosaic_2x2'")
-        action["diffusion_view_layout"] = diffusion_view_layout
-    resolved_diffusion_view_layout = str(
-        action.get("diffusion_view_layout", "mosaic_2x2")
-    )
-    if resolved_diffusion_view_layout != "mosaic_2x2":
-        raise ValueError(
-            "checkpoint diffusion_view_layout must be 'mosaic_2x2'"
+        action["diffusion_view_layout"] = validate_diffusion_view_layout(
+            diffusion_view_layout
         )
+    resolved_diffusion_view_layout = validate_diffusion_view_layout(
+        action.get("diffusion_view_layout", "mosaic_2x2"),
+        path="checkpoint diffusion_view_layout",
+    )
+    action["diffusion_view_layout"] = resolved_diffusion_view_layout
     registration = wam_registry.get("wan22")
     if "sampling" not in registration.metadata.capabilities:
         raise NotImplementedError("Registered Wan2.2 plugin does not support sampling")
@@ -276,6 +280,7 @@ def build_wan22_policy_from_checkpoint(
             semantic_grad_clip_norm=float(
                 action.get("align_proj_gate_grad_clip_norm", 0.5)
             ),
+            auto_context_length=action.get("auto_context_length"),
             max_history_steps=int(action.get("infer_memory_fifo_max_steps", 8)),
             view_index=int(action.get("view_index", 0)),
             tiled=bool(action.get("tiled", False)),
@@ -288,10 +293,8 @@ def build_wan22_policy_from_checkpoint(
                 int(action.get("tile_stride_width", 16)),
             ),
             visual_input_range=visual_input_range,
-            diffusion_view_layout=cast(
-                Literal["mosaic_2x2"],
-                resolved_diffusion_view_layout,
-            ),
+            diffusion_view_layout=resolved_diffusion_view_layout,
+            vlm_preprocessing=action.get("vlm_preprocessing"),
         ),
         vlm=vlm,
         token_pooler=nn.Identity(),
@@ -748,6 +751,7 @@ def _native_build_inputs(
         "align_proj_gate_grad_clip_norm": (
             auto.semantic_grad_clip_norm if auto is not None else 0.5
         ),
+        "auto_context_length": auto.context_length if auto is not None else None,
         "text_encoder_cfg": model.condition_router.interactive.t5.instantiate_dict(),
         "vae_cfg": visual.vae.instantiate_dict(),
         "image_encoder_cfg": visual.image_encoder.instantiate_dict(),
@@ -762,6 +766,7 @@ def _native_build_inputs(
         "latent_memory_residual_scale": memory.residual_scale,
         "latent_memory_dropout": memory.dropout,
         "diffusion_view_layout": visual.diffusion_view_layout,
+        "vlm_preprocessing": deepcopy(visual.vlm_preprocessing),
         "view_index": visual.view_index,
         "tiled": visual.tiled,
         "tile_size_height": visual.tile_size[0],
@@ -976,7 +981,6 @@ def _kernel_config(
 def _validate_block_geometry(action: dict[str, Any], core: nn.Module) -> None:
     expected = {
         "num_frame_per_block": 2,
-        "num_action_per_block": 24,
         "num_state_per_block": 1,
     }
     for name, required in expected.items():
@@ -987,6 +991,25 @@ def _validate_block_geometry(action: dict[str, Any], core: nn.Module) -> None:
                 f"Native Wan2.2 requires {name}={required}; "
                 f"config={configured}, core={actual}"
             )
+    configured_actions = int(action.get("num_action_per_block", 24))
+    actual_actions = int(
+        getattr(core, "num_action_per_block", configured_actions)
+    )
+    action_horizon = int(action.get("action_horizon", configured_actions))
+    if configured_actions not in {24, 48}:
+        raise ValueError(
+            "Native Wan2.2 num_action_per_block must be 24 or 48"
+        )
+    if (
+        actual_actions != configured_actions
+        or action_horizon != configured_actions
+    ):
+        raise ValueError(
+            "Native Wan2.2 action_horizon, num_action_per_block, and core "
+            "geometry must match; "
+            f"horizon={action_horizon}, config={configured_actions}, "
+            f"core={actual_actions}"
+        )
 
 
 def _validate_recipe_expectations(

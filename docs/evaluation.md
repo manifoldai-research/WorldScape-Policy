@@ -33,6 +33,13 @@ Use `EVALUATION.task_name=adjust_bottle` for a single task. Seed filtering,
 expert checks, instruction generation, video capture, and success accounting
 remain owned by RoboTwin.
 
+
+```bash
+ROBOTWIN2_EVAL_MODEL_PATH=/models/checkpoint \
+ROBOTWIN_VLM_PREPROCESSING='{mode: resize, height: 160, width: 320}' \
+bash recipes/eval/eval_robotwin2.sh
+```
+
 ## HDF5 replay
 
 ```bash

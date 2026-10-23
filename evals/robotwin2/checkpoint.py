@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -10,6 +13,99 @@ from worldscape_policy.checkpoint.transforms import (
     EmbodimentTransform,
     NativeCheckpointTransform,
 )
+from worldscape_policy.data.video_preprocessing import validate_vlm_preprocessing
+from worldscape_policy.visual_mosaic import (
+    DiffusionViewLayout,
+    validate_diffusion_view_layout,
+)
+
+
+@dataclass(frozen=True)
+class RoboTwin2CheckpointMetadata:
+    """Small inference contract read from YAML without loading model weights."""
+
+    action_horizon: int
+    diffusion_view_layout: DiffusionViewLayout
+    vlm_preprocessing: dict[str, Any] | None
+
+
+def load_robotwin2_checkpoint_metadata(
+    checkpoint: str | Path,
+) -> RoboTwin2CheckpointMetadata:
+    config_path = Path(checkpoint) / "model_config.yaml"
+    if not config_path.is_file():
+        raise FileNotFoundError(f"RoboTwin2 checkpoint is missing {config_path.name}")
+    payload = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    try:
+        model = payload["model"]
+        horizon = model["shape"]["action_horizon"]
+        visual = model.get("visual_memory", {})
+        if not isinstance(visual, Mapping):
+            raise TypeError("visual_memory must be a mapping")
+        layout = visual.get("diffusion_view_layout", "mosaic_2x2")
+        preprocessing = validate_vlm_preprocessing(visual.get("vlm_preprocessing"))
+    except (KeyError, TypeError) as exc:
+        raise ValueError("Invalid RoboTwin2 checkpoint inference metadata") from exc
+    if isinstance(horizon, bool) or horizon not in {24, 48}:
+        raise ValueError("RoboTwin2 checkpoint action_horizon must be 24 or 48")
+    layout = validate_diffusion_view_layout(
+        layout, path="RoboTwin2 checkpoint diffusion_view_layout"
+    )
+    return RoboTwin2CheckpointMetadata(int(horizon), layout, preprocessing)
+
+
+def resolve_robotwin2_evaluation_config(
+    checkpoint: str | Path,
+    overrides: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Resolve nullable evaluation options and reject model geometry changes."""
+
+    metadata = load_robotwin2_checkpoint_metadata(checkpoint)
+    for key, expected in (
+        ("action_horizon", metadata.action_horizon),
+        ("diffusion_view_layout", metadata.diffusion_view_layout),
+    ):
+        requested = overrides.get(key)
+        if key == "diffusion_view_layout" and requested is not None:
+            requested = validate_diffusion_view_layout(requested)
+        if requested is not None and requested != expected:
+            raise ValueError(
+                f"Evaluation {key}={requested!r} conflicts with checkpoint {expected!r}"
+            )
+    horizon = metadata.action_horizon
+    interval = overrides.get("observation_interval")
+    interval = horizon // 8 if interval is None else int(interval)
+    if interval != horizon // 8:
+        raise ValueError(
+            "observation_interval must produce nine frames over one action block; "
+            f"expected {horizon // 8} for action_horizon={horizon}"
+        )
+    replan = overrides.get("replan_steps")
+    replan = horizon if replan is None else int(replan)
+    if not 1 <= replan <= horizon or replan % interval:
+        raise ValueError(
+            "replan_steps must be within action_horizon and divisible by observation_interval"
+        )
+    stride = overrides.get("vlm_history_stride")
+    stride = horizon if stride is None else int(stride)
+    if stride < 1 or stride % interval:
+        raise ValueError(
+            "vlm_history_stride must be positive and divisible by observation_interval"
+        )
+    preprocessing = overrides.get("vlm_preprocessing")
+    preprocessing = (
+        metadata.vlm_preprocessing
+        if preprocessing is None
+        else validate_vlm_preprocessing(preprocessing)
+    )
+    return {
+        "action_horizon": horizon,
+        "replan_steps": replan,
+        "observation_interval": interval,
+        "vlm_history_stride": stride,
+        "diffusion_view_layout": metadata.diffusion_view_layout,
+        "vlm_preprocessing": preprocessing,
+    }
 
 
 def load_robotwin2_checkpoint_transform(
@@ -99,8 +195,9 @@ def _validate_robotwin2_model_dimensions(
         raise ValueError(
             "RoboTwin2 checkpoint model_config.yaml has an invalid dimension contract"
         ) from exc
+    if dimensions["shape.action_horizon"] not in {24, 48}:
+        raise ValueError("RoboTwin2 checkpoint action_horizon must be 24 or 48")
     expected = {
-        "shape.action_horizon": 24,
         "shape.action_dim": embodiment.max_action_dim,
         "shape.max_state_dim": embodiment.max_state_dim,
         "core.action_dim": embodiment.max_action_dim,
@@ -123,4 +220,9 @@ def _validate_robotwin2_model_dimensions(
         )
 
 
-__all__ = ["load_robotwin2_checkpoint_transform"]
+__all__ = [
+    "RoboTwin2CheckpointMetadata",
+    "load_robotwin2_checkpoint_metadata",
+    "load_robotwin2_checkpoint_transform",
+    "resolve_robotwin2_evaluation_config",
+]

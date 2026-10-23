@@ -50,7 +50,6 @@ class Wan22KernelConfig:
     def __post_init__(self) -> None:
         expected = {
             "num_frame_per_block": 2,
-            "num_action_per_block": 24,
             "num_state_per_block": 1,
         }
         for name, required in expected.items():
@@ -58,9 +57,13 @@ class Wan22KernelConfig:
                 raise ValueError(
                     f"Native Wan2.2 requires {name}={required}"
                 )
-        if self.action_horizon != 24:
+        if self.num_action_per_block not in {24, 48}:
             raise ValueError(
-                "Native Wan2.2 action_horizon must be one 24-action block"
+                "Native Wan2.2 num_action_per_block must be 24 or 48"
+            )
+        if self.action_horizon != self.num_action_per_block:
+            raise ValueError(
+                "Native Wan2.2 action_horizon must match num_action_per_block"
             )
 
 
@@ -132,7 +135,9 @@ class Wan22LegacyExactKernel:
         expected_actions = generated_blocks * self.config.num_action_per_block
         if clean_action.shape[1] != expected_actions:
             raise ValueError(
-                "training geometry requires 24 actions per 2-frame block: "
+                "training geometry requires "
+                f"{self.config.num_action_per_block} actions per "
+                f"{self.config.num_frame_per_block}-frame block: "
                 f"expected {expected_actions}, got {clean_action.shape[1]}"
             )
         timestep_ids = self._sample_video_timestep_ids(
@@ -243,6 +248,10 @@ class Wan22LegacyExactKernel:
     ) -> WAMInferenceState:
         if inference_state.current_start_frame == 0:
             return inference_state
+        if int(getattr(core, "max_chunk_size", 0)) == 1:
+            # Restart one-chunk checkpoints at the visual/action positions they
+            # saw during training, using the current real frame as the anchor.
+            return WAMInferenceState()
         if observation_num_frames == 1:
             return WAMInferenceState()
         local_attn_size = int(getattr(core, "local_attn_size", 0))
@@ -319,22 +328,27 @@ class Wan22LegacyExactKernel:
         state_steps: int,
     ) -> None:
         for name, required in (
-            ("num_frame_per_block", 2),
-            ("num_action_per_block", 24),
-            ("num_state_per_block", 1),
+            ("num_frame_per_block", self.config.num_frame_per_block),
+            ("num_action_per_block", self.config.num_action_per_block),
+            ("num_state_per_block", self.config.num_state_per_block),
         ):
             if int(getattr(core, name, required)) != required:
                 raise ValueError(
                     f"Native Wan2.2 core requires {name}={required}"
                 )
-        if (video_frames - 1) % 2:
+        if (video_frames - 1) % self.config.num_frame_per_block:
             raise ValueError(
                 "video latent frames must be one anchor plus 2-frame blocks"
             )
-        blocks = (video_frames - 1) // 2
-        if action_steps != blocks * 24 or state_steps != blocks:
+        blocks = (video_frames - 1) // self.config.num_frame_per_block
+        if (
+            action_steps != blocks * self.config.num_action_per_block
+            or state_steps != blocks * self.config.num_state_per_block
+        ):
             raise ValueError(
-                "core inputs must provide 2 video / 24 action / 1 state "
+                f"core inputs must provide {self.config.num_frame_per_block} video / "
+                f"{self.config.num_action_per_block} action / "
+                f"{self.config.num_state_per_block} state "
                 "tokens per causal block"
             )
 

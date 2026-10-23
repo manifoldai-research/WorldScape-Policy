@@ -14,16 +14,24 @@ EVALUATION:
   save_video: ${oc.decode:${oc.env:ROBOTWIN_SAVE_VIDEO,false}}
   # Run RoboTwin script/test_render.py once per worker before model loading.
   render_preflight: ${oc.decode:${oc.env:ROBOTWIN_RENDER_PREFLIGHT,false}}
+  # Compile cuRobo/Warp kernels once before the GPU workers share the cache.
+  warp_prewarm: ${oc.decode:${oc.env:ROBOTWIN_WARP_PREWARM,true}}
+  warp_prewarm_timeout_s: ${oc.decode:${oc.env:ROBOTWIN_WARP_PREWARM_TIMEOUT_S,1800}}
   clear_cache_freq: 1
   device: cuda
   mode: ${oc.env:WSP_MODE,auto}
   action_type: qpos
-  action_horizon: 24
-  replan_steps: ${oc.decode:${oc.env:ROBOTWIN_REPLAN_STEPS,24}}
+  # Null reads checkpoint metadata; explicit geometry must match the checkpoint.
+  action_horizon: ${oc.decode:${oc.env:ROBOTWIN_ACTION_HORIZON,null}}
+  replan_steps: ${oc.decode:${oc.env:ROBOTWIN_REPLAN_STEPS,null}}
   memory_reset_chunks: ${oc.decode:${oc.env:ROBOTWIN_MEMORY_RESET_CHUNKS,2}}
   skip_get_obs_within_replan: true
-  observation_interval: 3
+  observation_interval: ${oc.decode:${oc.env:ROBOTWIN_OBSERVATION_INTERVAL,null}}
   vlm_history_num_frames: ${oc.decode:${oc.env:ROBOTWIN_VLM_HISTORY_NUM_FRAMES,4}}
+  vlm_history_stride: ${oc.decode:${oc.env:ROBOTWIN_VLM_HISTORY_STRIDE,null}}
+  diffusion_view_layout: ${oc.decode:${oc.env:ROBOTWIN_DIFFUSION_VIEW_LAYOUT,null}}
+  # Optional {mode: raw} or {mode: resize, height: 160, width: 320} override.
+  vlm_preprocessing: ${oc.decode:${oc.env:ROBOTWIN_VLM_PREPROCESSING,null}}
   vlm_cot_prompt: '${oc.env:ROBOTWIN_VLM_COT_PROMPT,"You are a robot planner. Instructions: {task}. Given the current high-level task instruction and current head-view observation, predict the next atomic action subtask for the next second."}'
   t5_prompt_template: '${oc.env:ROBOTWIN_T5_PROMPT_TEMPLATE,"A video shows that a robot {instruction} The robot {instruction}"}'
   validate_checkpoint_artifacts: ${oc.decode:${oc.env:WSP_VALIDATE_CHECKPOINT_ARTIFACTS,false}}
