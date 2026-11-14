@@ -329,7 +329,7 @@ respective licenses and terms of use.
 
 ```bibtex
 @article{su2026worldscape_policy_2,
-  title={WorldScape Policy 2.0: Empowering Steerable World Action Modeling with Reasoning-Augmented Memory},
+  title={WorldScape Policy 2.0: Empowering Steerable World Action Modeling with Reasoning-Augmented Memory and In-Context Learning},
   author={Su, Haisheng and Liu, Zongdai and Jin, Xin and Dou, Haoxuan and Hu, Chengming and Li, Baorun and Liu, Zhanwang and Xu, Ruiyan and Fang, Jianjie and Zhang, Xin and Yang, Zhenjie and Yang, Xue and Gao, Chen and Yan, Junchi and Li, Yong and Wu, Wei},
   journal={arXiv preprint arXiv:2607.18840},
   year={2026}
